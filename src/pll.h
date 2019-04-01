@@ -426,22 +426,22 @@ typedef struct pll_rnetwork_node_s
 {
   char* label;
   unsigned int idx; // index in the nodes array
-  int is_reticulation = 0;
+  int is_reticulation;
   void* data;
 
   // the following fields are only relevant if it is a reticulation node
   char* reticulation_name;
-  double support = 0;
-  double prob = 0; // probability of taking the first parent, has to lie between 0 and 1.
-  struct pll_rnetwork_node_s* first_parent = NULL; // the first parent has to be a non-reticulation node
-  struct pll_rnetwork_node_s* second_parent = NULL; // the second parent has to be a non-reticulation node
-  struct pll_rnetwork_node_s* child = NULL; // the child has to be a non-reticulation node
+  double support;
+  double prob; // probability of taking the first parent, has to lie between 0 and 1.
+  struct pll_rnetwork_node_s* first_parent; // the first parent has to be a non-reticulation node
+  struct pll_rnetwork_node_s* second_parent; // the second parent has to be a non-reticulation node
+  struct pll_rnetwork_node_s* child; // the child has to be a non-reticulation node
 
   // the following fields are only relevant if it is not a reticulation node
-  double length = 0; // length of the edge to the parent node
-  struct pll_rnetwork_node_s* parent = NULL;
-  struct pll_rnetwork_node_s* left = NULL;
-  struct pll_rnetwork_node_s* right = NULL;
+  double length; // length of the edge to the parent node
+  struct pll_rnetwork_node_s* parent;
+  struct pll_rnetwork_node_s* left;
+  struct pll_rnetwork_node_s* right;
 } pll_rnetwork_node_t;
 
 typedef struct pll_rnetwork_s

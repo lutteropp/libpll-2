@@ -36,9 +36,9 @@ static unsigned int tip_cnt = 0;
 static unsigned int inner_tree_cnt = 0;
 static unsigned int reticulation_cnt = 0;
 static pll_rnetwork_node_t ** reticulation_node_pointers;
-static (char*)* reticulation_node_names;
+static char* reticulation_node_names[64];
 
-static void dealloc_data(pll_rnode_t * node, void (*cb_destroy)(void *))
+static void dealloc_data(pll_rnetwork_node_t * node, void (*cb_destroy)(void *))
 {
   if (node->data)
   {
@@ -60,16 +60,16 @@ PLL_EXPORT void pll_rnetwork_graph_destroy(pll_rnetwork_node_t * root,
   free(root);
 }
 
-PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * tree,
+PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * network,
                                   void (*cb_destroy)(void *))
 {
   unsigned int i;
   pll_rnetwork_node_t * node;
 
   /* deallocate all nodes */
-  for (i = 0; i < tree->tip_count + tree->inner_tree_count + tree->reticulation_count; ++i)
+  for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i)
   {
-    node = tree->nodes[i];
+    node = network->nodes[i];
     dealloc_data(node, cb_destroy);
 
     if (node->label)
@@ -78,9 +78,9 @@ PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * tree,
     free(node);
   }
 
-  /* deallocate tree structure */
-  free(tree->nodes);
-  free(tree);
+  /* deallocate network structure */
+  free(network->nodes);
+  free(network);
 }
 
 static void pll_rnetwork_error(pll_rnetwork_node_t * node, const char * s)
@@ -100,11 +100,11 @@ static void pll_rnetwork_error(pll_rnetwork_node_t * node, const char * s)
 {
   char * s;
   char * d;
-  struct pll_rnetwork_node_s * tree;
+  struct pll_rnetwork_node_s * network;
 }
 
 %error-verbose
-%parse-param {struct pll_rnetwork_node_s * tree}
+%parse-param {struct pll_rnetwork_node_s * network}
 %destructor { pll_rnetwork_graph_destroy($$,NULL); } subtree
 %destructor { free($$); } STRING
 %destructor { free($$); } NUMBER
@@ -113,53 +113,53 @@ static void pll_rnetwork_error(pll_rnetwork_node_t * node, const char * s)
 %token<s> STRING
 %token<d> NUMBER
 %type<s> label optional_label
-%type<d> number optional_length
-%type<tree> subtree
+%type<d> number optional_length optional_number_after_colon
+%type<network> subtree
 %start input
 %%
 
 input: '(' subtree ',' subtree ')' optional_label optional_length ';'
 {
   inner_tree_cnt++;
-  tree->is_reticulation = 0;
+  network->is_reticulation = 0;
 
-  tree->left   = $2;
-  tree->right  = $4;
-  tree->label  = $6;
-  tree->length = $7 ? atof($7) : 0;
-  tree->parent = NULL;
+  network->left   = $2;
+  network->right  = $4;
+  network->label  = $6;
+  network->length = $7 ? atof($7) : 0;
+  network->parent = NULL;
   free($7);
 
-  if (tree->left->is_reticulation)
+  if (network->left->is_reticulation)
   {
-    if (!tree->left->first_parent)
+    if (!network->left->first_parent)
     {
-      tree->left->first_parent = tree;
+      network->left->first_parent = network;
     }
     else
     {
-      tree->left->second_parent = tree;
+      network->left->second_parent = network;
     }
   }
   else
   {
-    tree->left->parent = tree;
+    network->left->parent = network;
   }
   
-  if (tree->right->is_reticulation)
+  if (network->right->is_reticulation)
   {
-    if (!tree->right->first_parent)
+    if (!network->right->first_parent)
     {
-      tree->right->first_parent = tree;
+      network->right->first_parent = network;
     }
     else
     {
-      tree->right->second_parent = tree;
+      network->right->second_parent = network;
     }
   }
   else
   {
-    tree->right->parent = tree;
+    network->right->parent = network;
   }
 };
 
@@ -257,7 +257,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
 }
        | optional_label '#' label optional_length
 {
-  int i = 0;
+  unsigned int i = 0;
   for (i = 0; i < reticulation_cnt; ++i)
   {
     if (strcmp(reticulation_node_names[i],$3) == 0)
@@ -451,7 +451,7 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   }
   
   unsigned int tip_index = 0;
-  unsigned int inner_index = tip_count;
+  unsigned int inner_index = tip_cnt;
 
   fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index);
   fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index);
@@ -471,8 +471,7 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename)
   tip_cnt = 0;
   inner_tree_cnt = 0;
   reticulation_cnt = 0;
-  reticulation_node_pointers = (pll_rnetwork_node_t *)calloc(64, sizeof(pll_rnetwork_node_t));
-  reticulation_node_names = ((char*)*)calloc(64, sizeof(char*));
+  reticulation_node_pointers = (pll_rnetwork_node_t **)calloc(64, sizeof(pll_rnetwork_node_t*));
 
   /* open input file */
   pll_rnetwork_in = fopen(filename, "r");
@@ -483,20 +482,18 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename)
     
     /* free the counters */
     free(reticulation_node_pointers);
-    free(reticulation_node_names);
     
     return PLL_FAILURE;
   }
 
   /* create root node */
-  if (!(root = (pll_rnetwork_t *)calloc(1, sizeof(pll_rnode_t))))
+  if (!(root = (pll_rnetwork_t *)calloc(1, sizeof(pll_rnetwork_node_t))))
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     
     /* free the counters */
     free(reticulation_node_pointers);
-    free(reticulation_node_names);
     
     return PLL_FAILURE;
   }
@@ -510,7 +507,6 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename)
     
     /* free the counters */
     free(reticulation_node_pointers);
-    free(reticulation_node_names);
     
     return PLL_FAILURE;
   }
@@ -527,7 +523,6 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename)
   
   /* free the counters */
   free(reticulation_node_pointers);
-  free(reticulation_node_names);
 
   return network;
 }
@@ -542,8 +537,7 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick_string(const char * s)
   tip_cnt = 0;
   inner_tree_cnt = 0;
   reticulation_cnt = 0;
-  reticulation_node_pointers = (pll_rnetwork_node_t *)calloc(64, sizeof(pll_rnetwork_node_t));
-  reticulation_node_names = ((char*)*)calloc(64, sizeof(char*));
+  reticulation_node_pointers = (pll_rnetwork_node_t **)calloc(64, sizeof(pll_rnetwork_node_t*));
 
   if (!(root = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t))))
   {
@@ -552,7 +546,6 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick_string(const char * s)
     
     /* free the counters */
     free(reticulation_node_pointers);
-    free(reticulation_node_names);
     
     return PLL_FAILURE;
   }
@@ -575,7 +568,6 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick_string(const char * s)
     
   /* free the counters */
   free(reticulation_node_pointers);
-  free(reticulation_node_names);
 
   return network;
 }
