@@ -871,6 +871,21 @@ PLL_EXPORT void pll_rtree_graph_destroy(pll_rnode_t * root,
 
 PLL_EXPORT pll_rtree_t * pll_rtree_wraptree(pll_rnode_t * root,
                                             unsigned int tip_count);
+
+/* functions in parse_rnetwork.y */
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename);
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick_string(const char * s);
+
+PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * root,
+                                  void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_rnetwork_graph_destroy(pll_rnetwork_node_t * root,
+                                        void (*cb_destroy)(void *));
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root);
+
 /* functions in parse_utree.y */
 
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename);
