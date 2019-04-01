@@ -298,7 +298,7 @@ PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
   *trav_size = 0;
   if (!root->left) return PLL_FAILURE;
 
-  /* we will traverse an unrooted network in the following way
+  /* we will traverse an rooted network in the following way
 
            root
             /\
@@ -312,6 +312,66 @@ PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
     rnetwork_tree_traverse_postorder(root, cbtrav, trav_size, outbuffer, tree_number);
   else if (traversal == PLL_TREE_TRAVERSE_PREORDER)
     rnetwork_tree_traverse_preorder(root, cbtrav, trav_size, outbuffer, tree_number);
+  else
+  {
+    snprintf(pll_errmsg, 200, "Invalid traversal value.");
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    return PLL_FAILURE;
+  }
+
+  return PLL_SUCCESS;
+}
+
+static void rnetwork_traverse_preorder(pll_rnetwork_node_t * node,
+                                    int (*cbtrav)(pll_rnetwork_node_t *),
+                                    unsigned int * index,
+                                    pll_rnetwork_node_t ** outbuffer)
+{
+  // TODO: Implement me, see https://eli.thegreenplace.net/2015/directed-graph-traversal-orderings-and-applications-to-data-flow-analysis/
+}
+
+static void rnetwork_traverse_postorder(pll_rnetwork_node_t * node,
+                                    int (*cbtrav)(pll_rnetwork_node_t *),
+                                    unsigned int * index,
+                                    pll_rnetwork_node_t ** outbuffer)
+{
+  // TODO: Implement me, see https://eli.thegreenplace.net/2015/directed-graph-traversal-orderings-and-applications-to-data-flow-analysis/
+}
+
+static void rnetwork_traverse_topological(pll_rnetwork_node_t * node,
+                                    int (*cbtrav)(pll_rnetwork_node_t *),
+                                    unsigned int * index,
+                                    pll_rnetwork_node_t ** outbuffer)
+{
+  // TODO: Implement me, see https://eli.thegreenplace.net/2015/directed-graph-traversal-orderings-and-applications-to-data-flow-analysis/
+}
+
+PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_rnetwork_node_t *),
+                                  pll_rnetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size)
+{
+
+  *trav_size = 0;
+  if (!root->left) return PLL_FAILURE;
+
+  /* we will traverse an rooted network in the following way
+
+           root
+            /\
+           /  \
+        left   right
+
+     at each node the callback function is called to decide whether we
+     are going to traversing the subtree rooted at the specific node */
+
+  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER)
+    rnetwork_traverse_postorder(root, cbtrav, trav_size, outbuffer);
+  else if (traversal == PLL_NETWORK_TRAVERSE_PREORDER)
+    rnetwork_traverse_preorder(root, cbtrav, trav_size, outbuffer);
+  else if (traversal == PLL_NETWORK_TRAVERSE_TOPOLOGICAL)
+	rnetwork_traverse_topological(root, cbtrav, trav_size, outbuffer);
   else
   {
     snprintf(pll_errmsg, 200, "Invalid traversal value.");

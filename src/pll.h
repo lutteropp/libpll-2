@@ -138,6 +138,10 @@
 #define PLL_TREE_TRAVERSE_POSTORDER         1
 #define PLL_TREE_TRAVERSE_PREORDER          2
 
+#define PLL_NETWORK_TRAVERSE_POSTORDER      1
+#define PLL_NETWORK_TRAVERSE_PREORDER       2
+#define PLL_NETWORK_TRAVERSE_TOPOLOGICAL    3
+
 /* error codes */
 
 #define PLL_ERROR_FILE_OPEN                100
@@ -1031,6 +1035,12 @@ PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
                                   int (*cbtrav)(pll_rnetwork_node_t *),
                                   pll_rnetwork_node_t ** outbuffer,
                                   unsigned int * trav_size, uint64_t tree_number, unsigned int num_reticulations);
+
+PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_rnetwork_node_t *),
+                                  pll_rnetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size);
 
 /* functions in core_partials.c */
 
