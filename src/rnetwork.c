@@ -382,3 +382,9 @@ PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
   return PLL_SUCCESS;
 }
 
+PLL_EXPORT pll_rtree_t * pll_rnetwork_extract_rtree(pll_rnetwork_node_t * root, uint64_t tree_number, unsigned int num_reticulations)
+{
+  // TODO: Implement me.
+	return NULL;
+}
+

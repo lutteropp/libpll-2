@@ -1042,6 +1042,8 @@ PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
                                   pll_rnetwork_node_t ** outbuffer,
                                   unsigned int * trav_size);
 
+PLL_EXPORT pll_rtree_t * pll_rnetwork_extract_rtree(pll_rnetwork_node_t * root, uint64_t tree_number, unsigned int num_reticulations);
+
 /* functions in core_partials.c */
 
 PLL_EXPORT void pll_core_create_lookup(unsigned int states,
