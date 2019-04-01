@@ -222,6 +222,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->second_parent  = NULL;
   $$->label  = $4;
   $$->reticulation_name = $6;
+  $$->reticulation_index = reticulation_cnt;
   $$->length = $8 ? atof($8) : 0;
   free($8);
   $$->support = $10 ? atof($10) : 0;
@@ -246,6 +247,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->second_parent  = NULL;
   $$->label  = $4;
   $$->reticulation_name = $6;
+  $$->reticulation_index = reticulation_cnt;
   $$->length = 0;
   $$->support = 0;
   $$->prob = 0;

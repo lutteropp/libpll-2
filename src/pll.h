@@ -431,6 +431,7 @@ typedef struct pll_rnetwork_node_s
 
   // the following fields are only relevant if it is a reticulation node
   char* reticulation_name;
+  unsigned int reticulation_index;
   double support;
   double prob; // probability of taking the first parent, has to lie between 0 and 1.
   struct pll_rnetwork_node_s* first_parent; // the first parent has to be a non-reticulation node
@@ -1025,11 +1026,11 @@ PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t * const* trav_buffer,
 PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
                                    char * (*cb_serialize)(const pll_rnetwork_node_t *));
 
-PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
                                   int traversal,
                                   int (*cbtrav)(pll_rnetwork_node_t *),
                                   pll_rnetwork_node_t ** outbuffer,
-                                  unsigned int * trav_size, unsigned int tree_number, unsigned int num_reticulations);
+                                  unsigned int * trav_size, uint64_t tree_number, unsigned int num_reticulations);
 
 /* functions in core_partials.c */
 

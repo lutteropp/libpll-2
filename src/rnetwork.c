@@ -157,35 +157,75 @@ PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
   return newick;
 }
 
-static void rnetwork_traverse_postorder(pll_rnetwork_node_t * node,
+static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node,
                                      int (*cbtrav)(pll_rnetwork_node_t *),
                                      unsigned int * index,
-                                     pll_rnetwork_node_t ** outbuffer, unsigned int tree_number, unsigned int num_reticulations)
+                                     pll_rnetwork_node_t ** outbuffer, uint64_t tree_number)
 {
-  // TODO: Adapt this function to rooted networks.
-  if (!node->left)
+  if (!node)
   {
-    if (cbtrav(node))
-    {
-      outbuffer[*index] = node;
-      *index = *index + 1;
-    }
     return;
   }
-  if (!cbtrav(node))
-    return;
 
-  rnetwork_traverse_postorder(node->left, cbtrav, index, outbuffer, tree_number, num_reticulations);
-  rnetwork_traverse_postorder(node->right, cbtrav, index, outbuffer, tree_number, num_reticulations);
+  if (!node->is_reticulation)
+  {
+    if (!node->left && !node->right)
+	{
+	  if (cbtrav(node))
+	  {
+	    outbuffer[*index] = node;
+	    *index = *index + 1;
+	  }
+	  return;
+	}
+	if (!cbtrav(node))
+	  return;
 
-  outbuffer[*index] = node;
-  *index = *index + 1;
+
+	if (node->left)
+	{
+      if (!node->left->is_reticulation)
+      {
+        rnetwork_tree_traverse_postorder(node->left, cbtrav, index, outbuffer, tree_number);
+      }
+      else
+      {
+    	int take_first_parent = (tree_number >> node->left->reticulation_index) & 1;
+    	if ((node->left->first_parent->idx == node->idx && take_first_parent) || (node->left->first_parent->idx != node->idx && !take_first_parent))
+    	{
+    	  rnetwork_tree_traverse_postorder(node->left, cbtrav, index, outbuffer, tree_number);
+    	}
+      }
+	}
+
+	if (node->right)
+	{
+	  if (!node->right->is_reticulation)
+	  {
+        rnetwork_tree_traverse_postorder(node->right, cbtrav, index, outbuffer, tree_number);
+	  }
+	  else
+	  {
+		int take_first_parent = (tree_number >> node->right->reticulation_index) & 1;
+		if ((node->right->first_parent->idx == node->idx && take_first_parent) || (node->right->first_parent->idx != node->idx && !take_first_parent))
+		{
+		  rnetwork_tree_traverse_postorder(node->right, cbtrav, index, outbuffer, tree_number);
+		}
+      }
+	}
+	outbuffer[*index] = node;
+	*index = *index + 1;
+  }
+  else
+  { // we won't add the reticulation node to the outbuffer
+    rnetwork_tree_traverse_postorder(node->child, cbtrav, index, outbuffer, tree_number);
+  }
 }
 
-static void rnetwork_traverse_preorder(pll_rnetwork_node_t * node,
+static void rnetwork_tree_traverse_preorder(pll_rnetwork_node_t * node,
                                     int (*cbtrav)(pll_rnetwork_node_t *),
                                     unsigned int * index,
-                                    pll_rnetwork_node_t ** outbuffer, unsigned int tree_number, unsigned int num_reticulations)
+                                    pll_rnetwork_node_t ** outbuffer, uint64_t tree_number)
 {
   // TODO: Adapt this function to rooted networks.
   if (!node->left)
@@ -203,18 +243,21 @@ static void rnetwork_traverse_preorder(pll_rnetwork_node_t * node,
   outbuffer[*index] = node;
   *index = *index + 1;
 
-  rnetwork_traverse_preorder(node->left, cbtrav, index, outbuffer, tree_number, num_reticulations);
-  rnetwork_traverse_preorder(node->right, cbtrav, index, outbuffer, tree_number, num_reticulations);
+  rnetwork_tree_traverse_preorder(node->left, cbtrav, index, outbuffer, tree_number);
+  rnetwork_tree_traverse_preorder(node->right, cbtrav, index, outbuffer, tree_number);
 
 }
 
-PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
                                   int traversal,
                                   int (*cbtrav)(pll_rnetwork_node_t *),
                                   pll_rnetwork_node_t ** outbuffer,
-                                  unsigned int * trav_size, unsigned int tree_number, unsigned int num_reticulations)
+                                  unsigned int * trav_size, uint64_t tree_number, unsigned int num_reticulations)
 {
   // TODO: Adapt this function to rooted networks.
+
+
+
   *trav_size = 0;
   if (!root->left) return PLL_FAILURE;
 
@@ -229,9 +272,9 @@ PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
      are going to traversing the subtree rooted at the specific node */
 
   if (traversal == PLL_TREE_TRAVERSE_POSTORDER)
-    rnetwork_traverse_postorder(root, cbtrav, trav_size, outbuffer, tree_number, num_reticulations);
+    rnetwork_tree_traverse_postorder(root, cbtrav, trav_size, outbuffer, tree_number);
   else if (traversal == PLL_TREE_TRAVERSE_PREORDER)
-    rnetwork_traverse_preorder(root, cbtrav, trav_size, outbuffer, tree_number, num_reticulations);
+    rnetwork_tree_traverse_preorder(root, cbtrav, trav_size, outbuffer, tree_number);
   else
   {
     snprintf(pll_errmsg, 200, "Invalid traversal value.");
