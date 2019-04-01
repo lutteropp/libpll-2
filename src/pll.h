@@ -1020,6 +1020,17 @@ PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t * const* trav_buffer,
                                              pll_pars_recop_t * ops,
                                              unsigned int * ops_count);
 
+/* functions in rnetwork.c */
+
+PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
+                                   char * (*cb_serialize)(const pll_rnetwork_node_t *));
+
+PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_rnetwork_node_t *),
+                                  pll_rnetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size, unsigned int tree_number, unsigned int num_reticulations);
+
 /* functions in core_partials.c */
 
 PLL_EXPORT void pll_core_create_lookup(unsigned int states,

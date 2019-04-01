@@ -1,0 +1,244 @@
+/*
+    Copyright (C) 2015 Tomas Flouri
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as
+    published by the Free Software Foundation, either version 3 of the
+    License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Contact: Tomas Flouri <Tomas.Flouri@h-its.org>,
+    Heidelberg Institute for Theoretical Studies,
+    Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
+*/
+
+#include "pll.h"
+
+static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
+                                  char * (*cb_serialize)(const pll_rnetwork_node_t *))
+{
+  // TODO: Adapt this function to rooted networks.
+  char * newick;
+  int size_alloced;
+  assert(root != NULL);
+
+  if (!(root->left) || !(root->right))
+  {
+    if (cb_serialize)
+    {
+      newick = cb_serialize(root);
+      size_alloced = strlen(newick);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+    }
+  }
+  else
+  {
+    char * subtree1 = rnetwork_export_newick_recursive(root->left,cb_serialize);
+    if (subtree1 == NULL)
+    {
+      return NULL;
+    }
+    char * subtree2 = rnetwork_export_newick_recursive(root->right,cb_serialize);
+    if (subtree2 == NULL)
+    {
+      free(subtree1);
+      return NULL;
+    }
+
+    if (cb_serialize)
+    {
+      char * temp = cb_serialize(root);
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s",
+                              subtree1,
+                              subtree2,
+                              temp);
+      free(temp);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s:%f",
+                              subtree1,
+                              subtree2,
+                              root->label ? root->label : "",
+                              root->length);
+    }
+    free(subtree1);
+    free(subtree2);
+  }
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed.");
+    return NULL;
+  }
+
+  return newick;
+}
+
+PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
+                                   char * (*cb_serialize)(const pll_rnetwork_node_t *))
+{
+  // TODO: Adapt this function to rooted networks.
+  char * newick;
+  int size_alloced;
+  if (!root) return NULL;
+
+  if (!(root->left) || !(root->right))
+  {
+    if (cb_serialize)
+    {
+      newick = cb_serialize(root);
+      size_alloced = strlen(newick);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+    }
+  }
+  else
+  {
+    char * subtree1 = rnetwork_export_newick_recursive(root->left,cb_serialize);
+    if (subtree1 == NULL)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+      return NULL;
+    }
+    char * subtree2 = rnetwork_export_newick_recursive(root->right,cb_serialize);
+    if (subtree2 == NULL)
+    {
+      free(subtree1);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+      return NULL;
+    }
+
+    if (cb_serialize)
+    {
+      char * temp = cb_serialize(root);
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s",
+                              subtree1,
+                              subtree2,
+                              temp);
+      free(temp);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick,
+                              "(%s,%s)%s:%f;",
+                              subtree1,
+                              subtree2,
+                              root->label ? root->label : "",
+                              root->length);
+    }
+    free(subtree1);
+    free(subtree2);
+  }
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    return NULL;
+  }
+
+  return newick;
+}
+
+static void rnetwork_traverse_postorder(pll_rnetwork_node_t * node,
+                                     int (*cbtrav)(pll_rnetwork_node_t *),
+                                     unsigned int * index,
+                                     pll_rnetwork_node_t ** outbuffer, unsigned int tree_number, unsigned int num_reticulations)
+{
+  // TODO: Adapt this function to rooted networks.
+  if (!node->left)
+  {
+    if (cbtrav(node))
+    {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+    }
+    return;
+  }
+  if (!cbtrav(node))
+    return;
+
+  rnetwork_traverse_postorder(node->left, cbtrav, index, outbuffer, tree_number, num_reticulations);
+  rnetwork_traverse_postorder(node->right, cbtrav, index, outbuffer, tree_number, num_reticulations);
+
+  outbuffer[*index] = node;
+  *index = *index + 1;
+}
+
+static void rnetwork_traverse_preorder(pll_rnetwork_node_t * node,
+                                    int (*cbtrav)(pll_rnetwork_node_t *),
+                                    unsigned int * index,
+                                    pll_rnetwork_node_t ** outbuffer, unsigned int tree_number, unsigned int num_reticulations)
+{
+  // TODO: Adapt this function to rooted networks.
+  if (!node->left)
+  {
+    if (cbtrav(node))
+    {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+    }
+    return;
+  }
+  if (!cbtrav(node))
+    return;
+
+  outbuffer[*index] = node;
+  *index = *index + 1;
+
+  rnetwork_traverse_preorder(node->left, cbtrav, index, outbuffer, tree_number, num_reticulations);
+  rnetwork_traverse_preorder(node->right, cbtrav, index, outbuffer, tree_number, num_reticulations);
+
+}
+
+PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
+                                  int traversal,
+                                  int (*cbtrav)(pll_rnetwork_node_t *),
+                                  pll_rnetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size, unsigned int tree_number, unsigned int num_reticulations)
+{
+  // TODO: Adapt this function to rooted networks.
+  *trav_size = 0;
+  if (!root->left) return PLL_FAILURE;
+
+  /* we will traverse an unrooted tree in the following way
+
+           root
+            /\
+           /  \
+        left   right
+
+     at each node the callback function is called to decide whether we
+     are going to traversing the subtree rooted at the specific node */
+
+  if (traversal == PLL_TREE_TRAVERSE_POSTORDER)
+    rnetwork_traverse_postorder(root, cbtrav, trav_size, outbuffer, tree_number, num_reticulations);
+  else if (traversal == PLL_TREE_TRAVERSE_PREORDER)
+    rnetwork_traverse_preorder(root, cbtrav, trav_size, outbuffer, tree_number, num_reticulations);
+  else
+  {
+    snprintf(pll_errmsg, 200, "Invalid traversal value.");
+    pll_errno = PLL_ERROR_PARAM_INVALID;
+    return PLL_FAILURE;
+  }
+
+  return PLL_SUCCESS;
+}
+
