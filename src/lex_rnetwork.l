@@ -19,20 +19,20 @@
     Schloss-Wolfsbrunnenweg 35, D-69118 Heidelberg, Germany
 */
 %{
-#include "parse_network.h"
+#include "parse_rnetwork.h"
 #include "pll.h"
 
 #define YY_USER_ACTION preaction();
 
 static size_t string_length = 0;
 
-int pll_network_colstart = 0;
-int pll_network_colend = 0;
+int pll_rnetwork_colstart = 0;
+int pll_rnetwork_colend = 0;
 
 static void preaction()
 {
-  pll_network_colstart = pll_network_colend;
-  pll_network_colend = pll_network_colend + pll_network_leng - 1;
+  pll_rnetwork_colstart = pll_rnetwork_colend;
+  pll_rnetwork_colend = pll_rnetwork_colend + pll_rnetwork_leng - 1;
 }
 
 static char * xstrndup(const char * s, size_t len)
@@ -58,19 +58,19 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     return PLL_FAILURE;
   }
-  memcpy(mem,pll_network_lval.s,*dstlen);
+  memcpy(mem,pll_rnetwork_lval.s,*dstlen);
   strncpy(mem+(*dstlen),src,srclen);
   mem[*dstlen+srclen] = 0;
   if (*dstlen)
-    free(pll_network_lval.s);
-  pll_network_lval.s =  mem;
+    free(pll_rnetwork_lval.s);
+  pll_rnetwork_lval.s =  mem;
   *dstlen += srclen;
-  return pll_network_lval.s;
+  return pll_rnetwork_lval.s;
 }
 
 %}
 %option noyywrap
-%option prefix="pll_network_"
+%option prefix="pll_rnetwork_"
 %option nounput
 %option noinput
 %option yylineno
@@ -95,7 +95,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 \\t               { append(&string_length, "\\t", 2);                          }
 \\                { append(&string_length, "\\", 1);                           }
 \\\\              { append(&string_length, "\\\\", 2);                         }
-([^\"\'\\]|\n)+   { append(&string_length, pll_network_text, pll_network_leng);    }
+([^\"\'\\]|\n)+   { append(&string_length, pll_rnetwork_text, pll_rnetwork_leng);    }
 }
 
 \:                { return ':';                                              }
@@ -106,18 +106,18 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 \,                { return ',';                                              }
 \"                { string_length = 0; BEGIN(quot);                            }
 \'                { string_length = 0; BEGIN(apos);                            }
-\n                { pll_network_colstart = pll_network_colend = 0;                 }
-[-+]?[0-9]+       { pll_network_lval.d = xstrndup(pll_network_text,pll_network_leng);
+\n                { pll_rnetwork_colstart = pll_rnetwork_colend = 0;                 }
+[-+]?[0-9]+       { pll_rnetwork_lval.d = xstrndup(pll_rnetwork_text,pll_rnetwork_leng);
                     return NUMBER;                                             }
 [+-]?(([0-9]+[\.]?[0-9]*)|([0-9]*[\.]?[0-9]+))([eE][+-]?[0-9]+)? {
-                    pll_network_lval.d = xstrndup(pll_network_text,pll_network_leng); 
+                    pll_rnetwork_lval.d = xstrndup(pll_rnetwork_text,pll_rnetwork_leng); 
                     return NUMBER;                                             }
 [^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {
-                    pll_network_lval.s = xstrndup(pll_network_text,pll_network_leng);
+                    pll_rnetwork_lval.s = xstrndup(pll_rnetwork_text,pll_rnetwork_leng);
                     return STRING;                                             }
 [ \t\r]           { ;                                                          }
 .                 { snprintf(pll_errmsg, 200, 
-                             "Syntax error (%c)\n", pll_network_text[0]);
+                             "Syntax error (%c)\n", pll_rnetwork_text[0]);
                     pll_errno = PLL_ERROR_NEWICK_SYNTAX;
                     return PLL_FAILURE;                                        }
 %%

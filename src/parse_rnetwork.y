@@ -231,8 +231,8 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
 
   $$->child->parent  = $$;
 
-  reticulation_node_pointers[reticulation_cnt] = &($$);
-  reticulation_node_names[reticulation_cnt] = &($$->reticulation_name);
+  reticulation_node_pointers[reticulation_cnt] = $$;
+  reticulation_node_names[reticulation_cnt] = $$->reticulation_name;
   reticulation_cnt++;
 }
        | '(' subtree ')' optional_label '#' label
@@ -251,8 +251,8 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->prob = 0;
 
   $$->child->parent  = $$;
-  reticulation_node_pointers[reticulation_cnt] = &($$);
-  reticulation_node_names[reticulation_cnt] = &($$->reticulation_name);
+  reticulation_node_pointers[reticulation_cnt] = $$;
+  reticulation_node_names[reticulation_cnt] = $$->reticulation_name;
   reticulation_cnt++;
 }
        | optional_label '#' label optional_length
@@ -487,7 +487,7 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick(const char * filename)
   }
 
   /* create root node */
-  if (!(root = (pll_rnetwork_t *)calloc(1, sizeof(pll_rnetwork_node_t))))
+  if (!(root = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t))))
   {
     pll_errno = PLL_ERROR_MEM_ALLOC;
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
