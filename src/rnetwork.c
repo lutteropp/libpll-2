@@ -292,7 +292,7 @@ PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_node_t * root,
                                   pll_rnetwork_node_t ** outbuffer,
                                   unsigned int * trav_size, uint64_t tree_number, unsigned int num_reticulations)
 {
-  if (tree_number >= (2 << num_reticulations))
+  if (tree_number >= ((unsigned int) 2 << num_reticulations))
     return PLL_FAILURE;
 
   *trav_size = 0;
