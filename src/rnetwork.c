@@ -21,67 +21,109 @@
 
 #include "pll.h"
 
-static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
+static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root, const pll_rnetwork_node_t * taken_parent,
                                   char * (*cb_serialize)(const pll_rnetwork_node_t *))
 {
-  // TODO: Adapt this function to rooted networks.
   char * newick;
   int size_alloced;
   assert(root != NULL);
 
-  if (!(root->left) || !(root->right))
+  if (root->is_reticulation)
   {
-    if (cb_serialize)
-    {
-      newick = cb_serialize(root);
-      size_alloced = strlen(newick);
+    if (root->first_parent->idx != taken_parent->idx)
+    { // treat it as if it were a leaf
+      if (cb_serialize)
+      {
+        newick = cb_serialize(root);
+        size_alloced = strlen(newick);
+      }
+      else
+      {
+    	size_alloced = asprintf(&newick, "%s#%s:%f:%f:%f", root->label ? root->label : "", root->reticulation_name, root->support, root->length, 1.0 - root->prob);
+      }
     }
     else
+    { // the full subtree action
+      char * subtree = rnetwork_export_newick_recursive(root->child, root, cb_serialize);
+      if (subtree == NULL)
+      {
+    	return NULL;
+      }
+      if (cb_serialize)
+      {
+    	char * temp = cb_serialize(root);
+    	size_alloced = asprintf(&newick, "(%s)%s", subtree, temp);
+    	free(temp);
+      }
+      else
+      {
+    	size_alloced = asprintf(&newick, "(%s)%s#%s:%f:%f:%f", subtree, root->label ? root->label : "", root->reticulation_name, root->support, root->length, root->prob);
+      }
+      free(subtree);
+    }
+    if (size_alloced < 0)
     {
-      size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "memory allocation during newick export failed.");
+      return NULL;
     }
   }
   else
   {
-    char * subtree1 = rnetwork_export_newick_recursive(root->left,cb_serialize);
-    if (subtree1 == NULL)
+    if (!(root->left) || !(root->right))
     {
-      return NULL;
-    }
-    char * subtree2 = rnetwork_export_newick_recursive(root->right,cb_serialize);
-    if (subtree2 == NULL)
-    {
-      free(subtree1);
-      return NULL;
-    }
-
-    if (cb_serialize)
-    {
-      char * temp = cb_serialize(root);
-      size_alloced = asprintf(&newick,
-                              "(%s,%s)%s",
-                              subtree1,
-                              subtree2,
-                              temp);
-      free(temp);
+      if (cb_serialize)
+      {
+        newick = cb_serialize(root);
+        size_alloced = strlen(newick);
+      }
+      else
+      {
+        size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+      }
     }
     else
     {
-      size_alloced = asprintf(&newick,
-                              "(%s,%s)%s:%f",
-                              subtree1,
-                              subtree2,
-                              root->label ? root->label : "",
-                              root->length);
+      char * subtree1 = rnetwork_export_newick_recursive(root->left, root, cb_serialize);
+      if (subtree1 == NULL)
+      {
+        return NULL;
+      }
+      char * subtree2 = rnetwork_export_newick_recursive(root->right, root, cb_serialize);
+      if (subtree2 == NULL)
+      {
+        free(subtree1);
+        return NULL;
+      }
+
+      if (cb_serialize)
+      {
+        char * temp = cb_serialize(root);
+        size_alloced = asprintf(&newick,
+                                "(%s,%s)%s",
+                                subtree1,
+                                subtree2,
+                                temp);
+        free(temp);
+      }
+      else
+      {
+        size_alloced = asprintf(&newick,
+                                "(%s,%s)%s:%f",
+                                subtree1,
+                                subtree2,
+                                root->label ? root->label : "",
+                                root->length);
+      }
+      free(subtree1);
+      free(subtree2);
     }
-    free(subtree1);
-    free(subtree2);
-  }
-  if (size_alloced < 0)
-  {
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf(pll_errmsg, 200, "memory allocation during newick export failed.");
-    return NULL;
+    if (size_alloced < 0)
+    {
+      pll_errno = PLL_ERROR_MEM_ALLOC;
+      snprintf(pll_errmsg, 200, "memory allocation during newick export failed.");
+      return NULL;
+    }
   }
 
   return newick;
@@ -90,10 +132,14 @@ static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
 PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
                                    char * (*cb_serialize)(const pll_rnetwork_node_t *))
 {
-  // TODO: Adapt this function to rooted networks.
   char * newick;
   int size_alloced;
   if (!root) return NULL;
+
+  if (root->is_reticulation)
+  {
+    return PLL_FAILURE;
+  }
 
   if (!(root->left) || !(root->right))
   {
@@ -109,14 +155,14 @@ PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
   }
   else
   {
-    char * subtree1 = rnetwork_export_newick_recursive(root->left,cb_serialize);
+    char * subtree1 = rnetwork_export_newick_recursive(root->left, root, cb_serialize);
     if (subtree1 == NULL)
     {
       pll_errno = PLL_ERROR_MEM_ALLOC;
       snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
       return NULL;
     }
-    char * subtree2 = rnetwork_export_newick_recursive(root->right,cb_serialize);
+    char * subtree2 = rnetwork_export_newick_recursive(root->right, root, cb_serialize);
     if (subtree2 == NULL)
     {
       free(subtree1);
