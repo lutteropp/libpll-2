@@ -215,7 +215,7 @@ static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node,
 
   if (!node->is_reticulation)
   {
-    if (!node->left && !node->right)
+    if (!node->left && !node->right) // leaf node
 	{
 	  if (cbtrav(node))
 	  {

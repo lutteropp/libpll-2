@@ -128,6 +128,7 @@ input: '(' subtree ',' subtree ')' optional_label optional_length ';'
   network->label  = $6;
   network->length = $7 ? atof($7) : 0;
   network->parent = NULL;
+  network->idx = 0;
   free($7);
 
   if (network->left->is_reticulation)
@@ -173,6 +174,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->label  = $6;
   $$->length = $7 ? atof($7) : 0;
   free($7);
+  $$->idx = 0;
 
   $$->left->parent  = $$;
   $$->right->parent = $$;
@@ -229,6 +231,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   free($10);
   $$->prob = atof($12);
   free($12);
+  $$->idx = 0;
 
   $$->child->parent  = $$;
 
@@ -251,6 +254,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->length = 0;
   $$->support = 0;
   $$->prob = 0;
+  $$->idx = 0;
 
   $$->child->parent  = $$;
   reticulation_node_pointers[reticulation_cnt] = $$;
@@ -281,6 +285,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->first_parent   = NULL;
   $$->second_parent  = NULL;
   $$->child = NULL;
+  $$->idx = 0;
   tip_cnt++;
   free($2);
 };
@@ -383,20 +388,26 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
     return;
   }
   
+  if (node->idx > 0) // the node has already been visited
+  {
+    return;
+  }
+  
   if (!node->is_reticulation)
   {
-    fill_nodes_recursive(node->left,  array, tip_index, inner_index);
-    fill_nodes_recursive(node->right, array, tip_index, inner_index);
+    fill_nodes_recursive(node->left,  array, tip_index, inner_index, scaler_index);
+    fill_nodes_recursive(node->right, array, tip_index, inner_index, scaler_index);
   }
   else
   {
-    fill_nodes_recursive(node->child, array, tip_index, inner_index);
+    fill_nodes_recursive(node->child, array, tip_index, inner_index, scaler_index);
   }
 
   array[*inner_index] = node;
   node->idx = *inner_index;
   node->scaler_idx = *scaler_index;
   *inner_index = *inner_index + 1;
+  *scaler_index = *scaler_index + 1;
 }
 
 /*static unsigned int rnetwork_count_tips(pll_rnetwork_node_t * root)
@@ -458,9 +469,11 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   unsigned int tip_index = 0;
   unsigned int inner_index = tip_cnt;
   unsigned int scaler_index = 0;
-
+ 
   fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index, &scaler_index);
   fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index, &scaler_index);
+  root->idx = inner_index;
+  root->scaler_idx = scaler_index;
   network->nodes[inner_index] = root;
   network->root = root;
 
