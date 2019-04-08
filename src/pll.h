@@ -432,6 +432,7 @@ typedef struct pll_rnetwork_node_s
   unsigned int idx; // index in the nodes array
   int is_reticulation;
   void* data;
+  unsigned int scaler_idx;
 
   // the following fields are only relevant if it is a reticulation node
   char* reticulation_name;

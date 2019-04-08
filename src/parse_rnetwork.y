@@ -366,7 +366,8 @@ PLL_EXPORT void pll_rnetwork_reset_template_indices(pll_rnetwork_node_t * root,
 static void fill_nodes_recursive(pll_rnetwork_node_t * node,
                                  pll_rnetwork_node_t ** array,
                                  unsigned int * tip_index,
-                                 unsigned int * inner_index)
+                                 unsigned int * inner_index,
+                                 unsigned int * scaler_index)
 {
   if (!node)
   {
@@ -376,6 +377,7 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
   if (!node->is_reticulation && !node->left && !node->right)
   { // we are at a tip node
     node->idx = *tip_index;
+    node->scaler_idx = PLL_SCALE_BUFFER_NONE;
     array[*tip_index] = node;
     *tip_index = *tip_index + 1;
     return;
@@ -393,6 +395,7 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
 
   array[*inner_index] = node;
   node->idx = *inner_index;
+  node->scaler_idx = *scaler_index;
   *inner_index = *inner_index + 1;
 }
 
@@ -454,9 +457,10 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   
   unsigned int tip_index = 0;
   unsigned int inner_index = tip_cnt;
+  unsigned int scaler_index = 0;
 
-  fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index);
-  fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index);
+  fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index, &scaler_index);
+  fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index, &scaler_index);
   network->nodes[inner_index] = root;
   network->root = root;
 
