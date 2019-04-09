@@ -203,6 +203,23 @@ PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
   return newick;
 }
 
+PLL_EXPORT int rnetwork_can_go_tree(pll_rnetwork_node_t * parent, pll_rnetwork_node_t * child, uint64_t tree_number)
+{
+  if (!child->is_reticulation)
+  {
+	return 1;
+  }
+  int take_first_parent = (tree_number >> child->reticulation_index) & 1;
+  if ((child->first_parent->idx == parent->idx && take_first_parent) || (child->first_parent->idx != parent->idx && !take_first_parent))
+  {
+	return 1;
+  }
+  else
+  {
+	return 0;
+  }
+}
+
 static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node,
                                      int (*cbtrav)(pll_rnetwork_node_t *),
                                      unsigned int * index,
@@ -241,8 +258,7 @@ static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node,
       }
       else
       {
-    	int take_first_parent = (tree_number >> node->left->reticulation_index) & 1;
-    	if ((node->left->first_parent->idx == node->idx && take_first_parent) || (node->left->first_parent->idx != node->idx && !take_first_parent))
+    	if (rnetwork_can_go_tree(node, node->left, tree_number))
     	{
     	  rnetwork_tree_traverse_postorder(node->left, cbtrav, index, outbuffer, tree_number, dead);
     	  if (!dead[node->left->idx])
@@ -265,8 +281,7 @@ static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node,
 	  }
 	  else
 	  {
-		int take_first_parent = (tree_number >> node->right->reticulation_index) & 1;
-		if ((node->right->first_parent->idx == node->idx && take_first_parent) || (node->right->first_parent->idx != node->idx && !take_first_parent))
+		if (rnetwork_can_go_tree(node, node->right, tree_number))
 		{
 		  rnetwork_tree_traverse_postorder(node->right, cbtrav, index, outbuffer, tree_number, dead);
 		  if (!dead[node->right->idx])

@@ -1031,6 +1031,8 @@ PLL_EXPORT void pll_rtree_create_pars_recops(pll_rnode_t * const* trav_buffer,
 PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
                                    char * (*cb_serialize)(const pll_rnetwork_node_t *));
 
+PLL_EXPORT int rnetwork_can_go_tree(pll_rnetwork_node_t * parent, pll_rnetwork_node_t * child, uint64_t tree_number);
+
 PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_t * network,
                                   int traversal,
                                   int (*cbtrav)(pll_rnetwork_node_t *),
