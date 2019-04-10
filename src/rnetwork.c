@@ -34,7 +34,7 @@ static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
 				size_alloced = strlen(newick);
 			} else {
 				size_alloced = asprintf(&newick, "%s#%s:%f:%f:%f", root->label ? root->label : "", root->reticulation_name, root->support,
-						root->length, 1.0 - root->prob);
+						root->second_parent_length, 1.0 - root->prob);
 			}
 		} else { // the full subtree action
 			char * subtree = rnetwork_export_newick_recursive(root->child, root, cb_serialize);
@@ -47,7 +47,7 @@ static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
 				free(temp);
 			} else {
 				size_alloced = asprintf(&newick, "(%s)%s#%s:%f:%f:%f", subtree, root->label ? root->label : "", root->reticulation_name,
-						root->support, root->length, root->prob);
+						root->support, root->first_parent_length, root->prob);
 			}
 			free(subtree);
 		}

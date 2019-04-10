@@ -225,7 +225,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   $$->label  = $4;
   $$->reticulation_name = $6;
   $$->reticulation_index = reticulation_cnt;
-  $$->length = $8 ? atof($8) : 0;
+  $$->first_parent_length = $8 ? atof($8) : 0;
   free($8);
   $$->support = $10 ? atof($10) : 0;
   free($10);
@@ -269,6 +269,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
     if (strcmp(reticulation_node_names[i],$3) == 0)
     {
       $$ = reticulation_node_pointers[i];
+      $$->second_parent_length = $4 ? atof($4) : 0;
       break;
     }
   }
