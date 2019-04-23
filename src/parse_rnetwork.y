@@ -74,12 +74,15 @@ PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * network,
 
     if (node->label)
       free(node->label);
+    if (node->reticulation_name)
+      free(node->reticulation_name);
 
     free(node);
   }
 
   /* deallocate network structure */
   free(network->nodes);
+  free(network->reticulation_nodes);
   free(network);
 }
 
@@ -105,7 +108,7 @@ static void pll_rnetwork_error(pll_rnetwork_node_t * node, const char * s)
 
 %error-verbose
 %parse-param {struct pll_rnetwork_node_s * network}
-%destructor { pll_rnetwork_graph_destroy($$,NULL); } subtree
+%destructor { pll_rnetwork_graph_destroy($$,NULL); } subnetwork
 %destructor { free($$); } STRING
 %destructor { free($$); } NUMBER
 %destructor { free($$); } label
@@ -114,11 +117,11 @@ static void pll_rnetwork_error(pll_rnetwork_node_t * node, const char * s)
 %token<d> NUMBER
 %type<s> label optional_label
 %type<d> number optional_length optional_number_after_colon
-%type<network> subtree
+%type<network> subnetwork
 %start input
 %%
 
-input: '(' subtree ',' subtree ')' optional_label optional_length ';'
+input: '(' subnetwork ',' subnetwork ')' optional_label optional_length ';'
 {
   inner_tree_cnt++;
   network->is_reticulation = 0;
@@ -164,7 +167,7 @@ input: '(' subtree ',' subtree ')' optional_label optional_length ';'
   }
 };
 
-subtree: '(' subtree ',' subtree ')' optional_label optional_length
+subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
 {
   inner_tree_cnt++;
   $$ = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
@@ -213,7 +216,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
 
 
 }
-       | '(' subtree ')' optional_label '#' label ':' optional_number_after_colon ':' optional_number_after_colon ':' number
+       | '(' subnetwork ')' optional_label '#' label ':' optional_number_after_colon ':' optional_number_after_colon ':' number
 {
   $$ = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
   $$->is_reticulation = 1;
@@ -239,7 +242,7 @@ subtree: '(' subtree ',' subtree ')' optional_label optional_length
   reticulation_node_names[reticulation_cnt] = $$->reticulation_name;
   reticulation_cnt++;
 }
-       | '(' subtree ')' optional_label '#' label
+       | '(' subnetwork ')' optional_label '#' label
 {
   $$ = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
   $$->is_reticulation = 1;

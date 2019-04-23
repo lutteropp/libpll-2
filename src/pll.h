@@ -1168,6 +1168,12 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t *
                                                   unsigned int inner_tree_count,
 												  unsigned int reticulation_count);
 
+PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * network,
+                                  void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
+                                        void (*cb_destroy)(void *));
+
 PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root);
 
 PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * root);

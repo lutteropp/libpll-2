@@ -41,6 +41,15 @@ FLEX_TARGET(lex_rnetwork_t
   ${CMAKE_CURRENT_SOURCE_DIR}/lex_rnetwork.l ${CMAKE_CURRENT_BINARY_DIR}/lex_rnetwork.c
   COMPILE_FLAGS ${LIBPLL_FLEX_FLAGS})
 ADD_FLEX_BISON_DEPENDENCY(lex_rnetwork_t parse_rnetwork_t)
+set(LIBPLL_BISON_FLAGS "-y -d -p pll_unetwork_")
+set(LIBPLL_FLEX_FLAGS "-P pll_unetwork_")
+BISON_TARGET(parse_unetwork_t 
+  ${CMAKE_CURRENT_SOURCE_DIR}/parse_unetwork.y ${CMAKE_CURRENT_BINARY_DIR}/parse_unetwork.c
+  COMPILE_FLAGS ${LIBPLL_BISON_FLAGS})
+FLEX_TARGET(lex_unetwork_t 
+  ${CMAKE_CURRENT_SOURCE_DIR}/lex_unetwork.l ${CMAKE_CURRENT_BINARY_DIR}/lex_unetwork.c
+  COMPILE_FLAGS ${LIBPLL_FLEX_FLAGS})
+ADD_FLEX_BISON_DEPENDENCY(lex_unetwork_t parse_unetwork_t)
 
 # needed for bison files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -50,6 +59,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 SET_SOURCE_FILES_PROPERTIES( ${FLEX_lex_utree_t_OUTPUTS} PROPERTIES COMPILE_FLAGS -Wno-sign-compare )
 SET_SOURCE_FILES_PROPERTIES( ${FLEX_lex_rtree_t_OUTPUTS} PROPERTIES COMPILE_FLAGS -Wno-sign-compare )
 SET_SOURCE_FILES_PROPERTIES( ${FLEX_lex_rnetwork_t_OUTPUTS} PROPERTIES COMPILE_FLAGS -Wno-sign-compare )
+SET_SOURCE_FILES_PROPERTIES( ${FLEX_lex_unetwork_t_OUTPUTS} PROPERTIES COMPILE_FLAGS -Wno-sign-compare )
 
 set(LIBPLL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/compress.c
   ${BISON_parse_utree_t_OUTPUTS}

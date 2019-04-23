@@ -778,6 +778,10 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->label = (root->label) ? xstrdup(root->label) : NULL;
 	  uroot->reticulation_name = (root->reticulation_name) ? xstrdup(root->reticulation_name) : NULL;
 	  uroot->reticulation_index = -1;
+	  uroot->clv_index = root->clv_index;
+	  uroot->node_index = root->idx;
+	  uroot->scaler_index = root->scaler_index;
+	  uroot->pmatrix_index = root->pmatrix_index;
 	  uroot->length = uroot->back->length;
 	  uroot->prob = uroot->back->prob;
 
@@ -1001,6 +1005,10 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
   uroot->back->active = 1;
   uroot->back->incoming = 1;
   uroot->reticulation_index = -1;
+  uroot->clv_index = root->clv_index;
+  uroot->node_index = root->idx;
+  uroot->scaler_index = root->scaler_index;
+  uroot->pmatrix_index = root->pmatrix_index;
 
   uroot->next->active = 1;
   uroot->next->incoming = 0;
@@ -1030,4 +1038,55 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
 
   free(reticulation_nodes);
   return pll_unetwork_wrapnetwork(uroot,0);
+}
+
+static void dealloc_data(pll_unetwork_node_t * node, void (*cb_destroy)(void *))
+{
+  if (node->data)
+  {
+    if (cb_destroy)
+      cb_destroy(node->data);
+  }
+}
+
+PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
+                                        void (*cb_destroy)(void *))
+{
+  if (!root) return;
+
+  pll_unetwork_graph_destroy(root->next->back, cb_destroy);
+  pll_unetwork_graph_destroy(root->next->next->back, cb_destroy);
+
+  dealloc_data(root, cb_destroy);
+  if (root->label)
+    free(root->label);
+  if (root->reticulation_name)
+    free(root->reticulation_name);
+  free(root);
+}
+
+PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * network,
+                                  void (*cb_destroy)(void *))
+{
+  unsigned int i;
+  pll_unetwork_node_t * node;
+
+  /* deallocate all nodes */
+  for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i)
+  {
+    node = network->nodes[i];
+    dealloc_data(node, cb_destroy);
+
+    if (node->label)
+      free(node->label);
+    if (node->reticulation_name)
+      free(node->reticulation_name);
+
+    free(node);
+  }
+
+  /* deallocate network structure */
+  free(network->nodes);
+  free(network->reticulation_nodes);
+  free(network);
 }
