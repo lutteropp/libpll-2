@@ -474,6 +474,33 @@ static void rnetwork_recurse_clone(pll_rnetwork_node_t * new_root, const pll_rne
 	}
 }
 
+PLL_EXPORT int pll_rnetwork_set_reticulation_parents(pll_rnetwork_t * network, uint64_t tree_number) {
+	if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
+		return PLL_FAILURE;
+	unsigned int i;
+	for (i = 0; i < network->reticulation_count; ++i) {
+		int take_first_parent = (tree_number >> network->reticulation_nodes[i]->reticulation_index) & 1;
+		if (take_first_parent) {
+			network->reticulation_nodes[i]->parent = network->reticulation_nodes[i]->first_parent;
+			network->reticulation_nodes[i]->length = network->reticulation_nodes[i]->first_parent_length;
+		} else {
+			network->reticulation_nodes[i]->parent = network->reticulation_nodes[i]->second_parent;
+			network->reticulation_nodes[i]->length = network->reticulation_nodes[i]->second_parent_length;
+		}
+
+	}
+	return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_rnetwork_forget_reticulation_parents(pll_rnetwork_t * network) {
+	unsigned int i;
+	for (i = 0; i < network->reticulation_count; ++i) {
+		network->reticulation_nodes[i]->parent = NULL;
+		network->reticulation_nodes[i]->length = 0;
+	}
+	return PLL_SUCCESS;
+}
+
 PLL_EXPORT pll_rnetwork_node_t * pll_rnetwork_graph_clone(const pll_rnetwork_node_t * root) {
 	pll_rnetwork_node_t * new_root = clone_node(root);
 	const pll_rnetwork_node_t * snode = root;

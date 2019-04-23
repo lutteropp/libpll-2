@@ -435,7 +435,10 @@ typedef struct pll_rnetwork_node_s
   unsigned int pmatrix_index; // same as idx
   int is_reticulation;
   void* data;
-  unsigned int scaler_idx;
+  int scaler_index;
+
+  double length; // length of the edge to the parent node
+  struct pll_rnetwork_node_s* parent; // in case of a reticulation node, this can be either first_parent, right_parent, or NULL (undecided).
 
   // the following fields are only relevant if it is a reticulation node
   char* reticulation_name;
@@ -449,8 +452,6 @@ typedef struct pll_rnetwork_node_s
   struct pll_rnetwork_node_s* child; // the child has to be a non-reticulation node
 
   // the following fields are only relevant if it is not a reticulation node
-  double length; // length of the edge to the parent node
-  struct pll_rnetwork_node_s* parent;
   struct pll_rnetwork_node_s* left;
   struct pll_rnetwork_node_s* right;
 } pll_rnetwork_node_t;
@@ -464,8 +465,49 @@ typedef struct pll_rnetwork_s
   unsigned int tree_edge_count;
   int binary;
   pll_rnetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
+  pll_rnetwork_node_t ** reticulation_nodes; // pointers to all reticulation nodes in the network
   pll_rnetwork_node_t * root;
 } pll_rnetwork_t;
+
+typedef struct pll_unetwork_node_s
+{
+  double length;
+  double prob;
+  double support;
+  unsigned int node_index; // index in the nodes array
+  unsigned int clv_index;
+  int scaler_index;
+  unsigned int pmatrix_index;
+  int reticulation_index; // -1 if it is not a reticulation
+  struct pll_unetwork_node_s * next;
+  struct pll_unetwork_node_s * back;
+  int incoming; // 1 for incoming, 0 for outgoing edge
+  int active; // determines whether the connection is active or not, this is needed for working with an induced tree
+
+  // we have a reticulation, if two out of node, node->next, node->next->next are incoming and one is outgoing.
+  // we have an inner tree node, if two out of node, node->next, node->next->next are outgoing and one is incoming.
+  // we have the root node, if all of node, node->next, and node->next->next are outgoing.
+  // we have a leaf node, if node->next and node->next->next are NULL.
+  char* label;
+  char* reticulation_name;
+
+  void * data;
+} pll_unetwork_node_t;
+
+typedef struct pll_unetwork_s
+{
+  unsigned int tip_count;
+  //unsigned int inner_count;
+  unsigned int inner_tree_count;
+  unsigned int reticulation_count;
+  unsigned int edge_count;
+  unsigned int tree_edge_count;
+  int binary;
+
+  pll_unetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
+  pll_unetwork_node_t ** reticulation_nodes; // pointers to all reticulation nodes in the network
+  pll_unetwork_node_t * vroot;
+} pll_unetwork_t;
 
 /* structures for handling topological rearrangement move rollbacks */
 
@@ -1066,6 +1108,9 @@ PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root,
 
 PLL_EXPORT int pll_rnetwork_can_go_tree(pll_rnetwork_node_t * parent, pll_rnetwork_node_t * child, uint64_t tree_number);
 
+PLL_EXPORT int pll_rnetwork_set_reticulation_parents(pll_rnetwork_t * network, uint64_t tree_number);
+PLL_EXPORT int pll_rnetwork_forget_reticulation_parents(pll_rnetwork_t * network);
+
 PLL_EXPORT double pll_rnetwork_reticulation_logprob(pll_rnetwork_t * network, uint64_t tree_number);
 PLL_EXPORT double pll_rnetwork_reticulation_prob(pll_rnetwork_t * network, uint64_t tree_number);
 
@@ -1084,6 +1129,55 @@ PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root,
 PLL_EXPORT pll_rnetwork_node_t * pll_rnetwork_graph_clone(const pll_rnetwork_node_t * root);
 
 PLL_EXPORT pll_rnetwork_t * pll_rnetwork_clone(const pll_rnetwork_t * root);
+
+/* functions in unetwork.c */
+
+PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_node_t * root,
+                                   char * (*cb_serialize)(const pll_unetwork_node_t *));
+
+PLL_EXPORT char * pll_unetwork_export_newick_rooted(const pll_unetwork_node_t * root,
+                                                 double root_brlen);
+
+PLL_EXPORT int pll_unetwork_set_reticulation_parents(pll_unetwork_t * network, uint64_t tree_number);
+
+PLL_EXPORT int pll_unetwork_forget_reticulation_parents(pll_unetwork_t * network);
+
+PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
+                                  int traversal,
+                                  int (*cbtrav)(pll_unetwork_node_t *),
+                                  pll_unetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size, uint64_t tree_number);
+
+PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav_buffer,
+                                            unsigned int trav_buffer_size,
+                                            double * branches,
+                                            unsigned int * pmatrix_indices,
+                                            pll_operation_t * ops,
+                                            unsigned int * matrix_count,
+                                            unsigned int * ops_count);
+
+PLL_EXPORT int pll_unetwork_check_tree_integrity(const pll_unetwork_t * root);
+
+PLL_EXPORT int pll_unetwork_check_integrity(const pll_unetwork_t * root);
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root,
+                                            unsigned int tip_count);
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
+                                                  unsigned int tip_count,
+                                                  unsigned int inner_tree_count,
+												  unsigned int reticulation_count);
+
+PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root);
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * root);
+
+PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network);
+
+PLL_EXPORT int node_is_inner_tree(const pll_unetwork_node_t * node);
+PLL_EXPORT int node_is_reticulation(const pll_unetwork_node_t * node);
+PLL_EXPORT int node_is_leaf(const pll_unetwork_node_t * node);
+PLL_EXPORT int node_is_root(const pll_unetwork_node_t * node);
 
 /* functions in core_partials.c */
 

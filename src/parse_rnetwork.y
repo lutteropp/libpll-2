@@ -371,6 +371,7 @@ PLL_EXPORT void pll_rnetwork_reset_template_indices(pll_rnetwork_node_t * root,
 
 static void fill_nodes_recursive(pll_rnetwork_node_t * node,
                                  pll_rnetwork_node_t ** array,
+                                 pll_rnetwork_node_t ** reticulations,
                                  unsigned int * tip_index,
                                  unsigned int * inner_index,
                                  unsigned int * scaler_index)
@@ -385,7 +386,7 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
     node->idx = *tip_index;
     node->clv_index = *tip_index;
     node->pmatrix_index = *tip_index;
-    node->scaler_idx = PLL_SCALE_BUFFER_NONE;
+    node->scaler_index = PLL_SCALE_BUFFER_NONE;
     array[*tip_index] = node;
     *tip_index = *tip_index + 1;
     return;
@@ -398,19 +399,20 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
   
   if (!node->is_reticulation)
   {
-    fill_nodes_recursive(node->left,  array, tip_index, inner_index, scaler_index);
-    fill_nodes_recursive(node->right, array, tip_index, inner_index, scaler_index);
+    fill_nodes_recursive(node->left,  array, reticulations, tip_index, inner_index, scaler_index);
+    fill_nodes_recursive(node->right, array, reticulations, tip_index, inner_index, scaler_index);
   }
   else
   {
-    fill_nodes_recursive(node->child, array, tip_index, inner_index, scaler_index);
+    reticulations[node->reticulation_index] = node;
+    fill_nodes_recursive(node->child, array, reticulations, tip_index, inner_index, scaler_index);
   }
 
   array[*inner_index] = node;
   node->idx = *inner_index;
   node->clv_index = *inner_index;
   node->pmatrix_index = *inner_index;
-  node->scaler_idx = *scaler_index;
+  node->scaler_index = *scaler_index;
   *inner_index = *inner_index + 1;
   *scaler_index = *scaler_index + 1;
 }
@@ -464,7 +466,8 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
 
   unsigned int total_node_cnt = tip_cnt + inner_tree_cnt + reticulation_cnt;
   network->nodes = (pll_rnetwork_node_t **)malloc(total_node_cnt * sizeof(pll_rnetwork_node_t *));
-  if (!network->nodes)
+  network->reticulation_nodes = (pll_rnetwork_node_t **)malloc(reticulation_cnt * sizeof(pll_rnetwork_node_t *));
+  if (!network->nodes || !network->reticulation_nodes)
   {
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -475,12 +478,12 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   unsigned int inner_index = tip_cnt;
   unsigned int scaler_index = 0;
  
-  fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index, &scaler_index);
-  fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index, &scaler_index);
+  fill_nodes_recursive(root->left, network->nodes, network->reticulation_nodes, &tip_index, &inner_index, &scaler_index);
+  fill_nodes_recursive(root->right, network->nodes, network->reticulation_nodes, &tip_index, &inner_index, &scaler_index);
   root->idx = inner_index;
   root->clv_index = inner_index;
   root->pmatrix_index = inner_index;
-  root->scaler_idx = scaler_index;
+  root->scaler_index = scaler_index;
   network->nodes[inner_index] = root;
   network->root = root;
   network->edge_count = reticulation_cnt + inner_tree_cnt * 2;
