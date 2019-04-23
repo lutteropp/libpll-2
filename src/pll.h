@@ -965,6 +965,25 @@ PLL_EXPORT void pll_rnetwork_graph_destroy(pll_rnetwork_node_t * root,
 
 PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root);
 
+/* functions in parse_unetwork.y */
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick(const char * filename);
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick_string(const char * s);
+
+PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * root,
+                                  void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
+                                        void (*cb_destroy)(void *));
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root, unsigned int tip_count);
+
+PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
+                                                  unsigned int tip_count,
+                                                  unsigned int inner_tree_count,
+												  unsigned int reticulation_count);
+
 /* functions in parse_utree.y */
 
 PLL_EXPORT pll_utree_t * pll_utree_parse_newick(const char * filename);
@@ -1159,20 +1178,6 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
 PLL_EXPORT int pll_unetwork_check_tree_integrity(const pll_unetwork_t * root);
 
 PLL_EXPORT int pll_unetwork_check_integrity(const pll_unetwork_t * root);
-
-PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root,
-                                            unsigned int tip_count);
-
-PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
-                                                  unsigned int tip_count,
-                                                  unsigned int inner_tree_count,
-												  unsigned int reticulation_count);
-
-PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * network,
-                                  void (*cb_destroy)(void *));
-
-PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
-                                        void (*cb_destroy)(void *));
 
 PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root);
 

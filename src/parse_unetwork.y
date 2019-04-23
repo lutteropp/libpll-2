@@ -48,7 +48,6 @@ static void dealloc_data(pll_unetwork_node_t * node, void (*cb_destroy)(void *))
       cb_destroy(node->data);
   }
 }
-
 static void close_roundabout(pll_unetwork_node_t * first)
 {
   pll_unetwork_node_t * last = first;
@@ -110,41 +109,25 @@ PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * network,
                                   void (*cb_destroy)(void *))
 {
   unsigned int i;
+  pll_unetwork_node_t * node;
 
-  /* deallocate tip nodes */
-  for (i = 0; i < network->tip_count; ++i)
+  /* deallocate all nodes */
+  for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i)
   {
-    dealloc_data(network->nodes[i], cb_destroy);
-    if (network->nodes[i]->label)
-      free(network->nodes[i]->label);
-    if (network->nodes[i]->reticulation_name)
-      free(network->nodes[i]->reticulation_name);
-    free(network->nodes[i]);
-  }
+    node = network->nodes[i];
+    dealloc_data(node, cb_destroy);
 
-  /* deallocate inner nodes */
-  for (i = network->tip_count; i < network->tip_count + network->inner_count; ++i)
-  {
-    pll_unetwork_node_t * first = network->nodes[i];
-    
-    assert(first);
+    if (node->label)
+      free(node->label);
+    if (node->reticulation_name)
+      free(node->reticulation_name);
 
-    if (first->label)
-      free(first->label);
-
-    pll_unetwork_node_t * node = first;
-	do
-    {
-      pll_unetwork_node_t * next = node->next;
-      dealloc_data(node, cb_destroy);
-      free(node);
-      node = next;
-    }
-    while(node && node != first);
+    free(node);
   }
 
   /* deallocate network structure */
   free(network->nodes);
+  free(network->reticulation_nodes);
   free(network);
 }
 
@@ -271,6 +254,11 @@ number: NUMBER   { $$=$1;};
 
 %%
 
+static int unetwork_is_rooted(const pll_unetwork_node_t * root)
+{
+  return (root->next && root->next->next == root) ? 1 : 0;
+}
+
 static void recursive_assign_indices(pll_unetwork_node_t * node,
                                     unsigned int * tip_clv_index,
                                     unsigned int * inner_clv_index,
@@ -343,6 +331,7 @@ PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * root,
 
 static void fill_nodes_recursive(pll_unetwork_node_t * node,
                                  pll_unetwork_node_t ** array,
+								 pll_unetwork_node_t ** reticulation_nodes,
                                  unsigned int array_size,
                                  unsigned int * tip_index,
                                  unsigned int * inner_index,
@@ -359,9 +348,9 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
   {
     /* inner node */
     pll_unetwork_node_t * snode = level ? node->next : node;
-    do 
+    do
     {
-      fill_nodes_recursive(snode->back, array, array_size, tip_index, 
+      fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
                            inner_index, level+1);
       snode = snode->next;
     }
@@ -373,11 +362,15 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
 
   assert(index < array_size);
   array[index] = node;
+  if (node_is_reticulation(node)) {
+    reticulation_nodes[node->reticulation_index] = node;
+  }
 }
 
-static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node, 
+static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
                                                 unsigned int * tip_count,
-                                                unsigned int * inner_count,
+                                                unsigned int * inner_tree_count,
+												unsigned int * reticulation_count,
                                                 unsigned int level)
 {
   if (!node->next)
@@ -390,58 +383,61 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
     unsigned int count = 0;
 
     pll_unetwork_node_t * snode = level ? node->next : node;
-	do 
+	do
 	{
-	  count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_count, level+1);
+	  count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1);
 	  snode = snode->next;
 	}
 	while (snode != node);
 
-    *inner_count += 1;
-	
+	if (node_is_reticulation(node)) {
+	  *reticulation_count += 1;
+	} else {
+      *inner_tree_count += 1;
+	}
+
 	return count + 1;
   }
 }
 
 static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned int * tip_count,
-                                      unsigned int * inner_count)
+                                      unsigned int * inner_tree_count, unsigned int * reticulation_count)
 {
   unsigned int count = 0;
-  
+
   if (tip_count)
-    *tip_count = 0; 
-  
-  if (inner_count)
-    *inner_count = 0; 
+    *tip_count = 0;
+
+  if (inner_tree_count)
+    *inner_tree_count = 0;
+
+  if (reticulation_count)
+	*reticulation_count = 0;
 
   if (!root->next && !root->back->next)
     return 0;
 
   if (!root->next)
     root = root->back;
-    
-  count = unetwork_count_nodes_recursive(root, tip_count, inner_count, 0);
-  
-  if (tip_count && inner_count)
-    assert(count == *tip_count + *inner_count); 
+
+  count = unetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count, 0);
+
+  if (tip_count && inner_tree_count && reticulation_count)
+    assert(count == *tip_count + *inner_tree_count + *reticulation_count);
 
   return count;
 }
 
-static int unetwork_is_rooted(const pll_unetwork_node_t * root)
-{
-  return (root->next && root->next->next == root) ? 1 : 0;
-}
-
 static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
                                     unsigned int tip_count,
-                                    unsigned int inner_count,
+                                    unsigned int inner_tree_count,
+									unsigned int reticulation_count,
                                     int binary)
 {
   unsigned int node_count;
-  
+
   pll_unetwork_t * network = (pll_unetwork_t *)malloc(sizeof(pll_unetwork_t));
-  if (!tree)
+  if (!network)
   {
     snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -454,7 +450,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
     pll_errno = PLL_ERROR_PARAM_INVALID;
     return PLL_FAILURE;
   }
-  
+
   if (!root->next)
     root = root->back;
 
@@ -462,26 +458,26 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   {
     if (tip_count == 0)
     {
-      node_count = unetwork_count_nodes(root, &tip_count, &inner_count);
-      if (inner_count != tip_count - 2)
+      node_count = unetwork_count_nodes(root, &tip_count, &inner_tree_count, &reticulation_count);
+      if (inner_tree_count != tip_count - 2)
       {
-        snprintf(pll_errmsg, 200, "Input tree is not strictly bifurcating.");
+        snprintf(pll_errmsg, 200, "Input network is not strictly bifurcating.");
         pll_errno = PLL_ERROR_PARAM_INVALID;
         return PLL_FAILURE;
       }
     }
     else
     {
-      inner_count = tip_count - 2;
-      node_count = tip_count + inner_count;
+      inner_tree_count = tip_count - 2;
+      node_count = tip_count + inner_tree_count + reticulation_count;
     }
   }
   else
   {
-    if (tip_count == 0 || inner_count == 0)
-      node_count = unetwork_count_nodes(root, &tip_count, &inner_count);
+    if (tip_count == 0 || inner_tree_count == 0)
+      node_count = unetwork_count_nodes(root, &tip_count, &inner_tree_count, &reticulation_count);
     else
-      node_count = tip_count + inner_count;
+      node_count = tip_count + inner_tree_count + reticulation_count;
   }
 
   if (!tip_count)
@@ -498,39 +494,50 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
     pll_errno = PLL_ERROR_MEM_ALLOC;
     return PLL_FAILURE;
   }
-  
+
+  network->reticulation_nodes = (pll_unetwork_node_t **)malloc(reticulation_count*sizeof(pll_unetwork_node_t *));
+  if (!network->reticulation_nodes)
+  {
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    return PLL_FAILURE;
+  }
+
   unsigned int tip_index = 0;
   unsigned int inner_index = tip_count;
 
-  fill_nodes_recursive(root, network->nodes, node_count, &tip_index, &inner_index, 0);
- 
-  assert(tip_index == tip_count);
-  assert(inner_index == tip_count + inner_count);
+  fill_nodes_recursive(root, network->nodes, network->reticulation_nodes, node_count, &tip_index, &inner_index, 0);
 
-  tree->tip_count = tip_count;
-  tree->inner_count = inner_count;
-  tree->edge_count = node_count - 1;
-  tree->binary = (inner_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
-  tree->vroot = root;
+  assert(tip_index == tip_count);
+  assert(inner_index == tip_count + inner_tree_count + reticulation_count);
+
+  network->tip_count = tip_count;
+  network->inner_tree_count = inner_tree_count;
+  network->reticulation_count = reticulation_count;
+  network->edge_count = node_count - 1; // TODO: is this correct?
+  network->tree_edge_count = node_count - reticulation_count - 1; // TODO: is this correct?
+  network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
+  network->vroot = root;
 
   return network;
 }
 
-/* wraps/encalupsates the unrooted tree graph into a network structure
+PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
+                                                  unsigned int tip_count,
+                                                  unsigned int inner_tree_count,
+												  unsigned int reticulation_count)
+{
+  return unetwork_wrapnetwork(root, tip_count, inner_tree_count, reticulation_count, 0);
+}
+
+/* wraps/encalupsates the unrooted tree graph into a tree structure
    that contains a list of nodes, number of tips and number of inner
    nodes. If 0 is passed as tip_count, then an additional recrursion
    of the tree structure is done to detect the number of tips */
 PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root,
                                             unsigned int tip_count)
 {
-  return unetwork_wrapnetwork(root, tip_count, 0, 1);
-}
-
-PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
-                                                  unsigned int tip_count,
-                                                  unsigned int inner_count)
-{
-  return unetwork_wrapnetwork(root, tip_count, inner_count, 0);
+  return unetwork_wrapnetwork(root, tip_count, 0, 0, 1);
 }
 
 pll_unetwork_node_t * pll_unetwork_unroot_inplace(pll_unetwork_node_t * root)
@@ -552,6 +559,7 @@ pll_unetwork_node_t * pll_unetwork_unroot_inplace(pll_unetwork_node_t * root)
     left->back = right;
     right->back = left;
     left->length = right->length = new_length;
+    left->prob = 1.0;
     left->pmatrix_index = right->pmatrix_index =
         PLL_MIN(left->pmatrix_index, right->pmatrix_index);
         
@@ -563,9 +571,9 @@ pll_unetwork_node_t * pll_unetwork_unroot_inplace(pll_unetwork_node_t * root)
 
 static pll_unetwork_t * unetwork_parse_newick(const char * filename, int auto_unroot)
 {
-  pll_unetwork_t * tree;
+  pll_unetwork_t * network;
 
-  struct pll_unode_s * root;
+  struct pll_unetwork_node_s * root;
 
   /* reset tip count */
   tip_cnt = 0;
@@ -612,10 +620,10 @@ static pll_unetwork_t * unetwork_parse_newick(const char * filename, int auto_un
   /* initialize clv and scaler indices to the default template */
   pll_unetwork_reset_template_indices(root, tip_cnt);
 
-  /* wrap tree */
-  tree = unetwork_wrapnetwork(root, 0, 0, 0);
+  /* wrap network */
+  network = unetwork_wrapnetwork(root, 0, 0, 0, 0);
 
-  return tree;
+  return network;
 }
 
 PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick(const char * filename)
@@ -671,7 +679,7 @@ static pll_unetwork_t * unetwork_parse_newick_string(const char * s, int auto_un
   /* initialize clv and scaler indices */
   pll_unetwork_reset_template_indices(root, tip_cnt);
 	
-  network = unetwork_wrapnetwork(root, 0, 0, 0);
+  network = unetwork_wrapnetwork(root, 0, 0, 0, 0);
 
   return network;
 }
