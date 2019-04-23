@@ -147,49 +147,39 @@ PLL_EXPORT char * pll_rnetwork_export_newick(const pll_rnetwork_node_t * root, c
 }
 
 PLL_EXPORT double pll_rnetwork_reticulation_logprob(pll_rnetwork_t * network, uint64_t tree_number) {
-  double res = 0;
-  if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
-	return PLL_FAILURE;
-  unsigned int i;
-  // TODO: This can be made more efficient by storing pointers to the reticulation nodes
-  for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i)
-  {
-    if (network->nodes[i]->is_reticulation)
-    {
-      if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number))
-      {
-        res += log(network->nodes[i]->prob);
-      }
-      else
-      {
-        res += log(1.0 - network->nodes[i]->prob);
-      }
-    }
-  }
-  return res;
+	double res = 0;
+	if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
+		return PLL_FAILURE;
+	unsigned int i;
+	// TODO: This can be made more efficient by storing pointers to the reticulation nodes
+	for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i) {
+		if (network->nodes[i]->is_reticulation) {
+			if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number)) {
+				res += log(network->nodes[i]->prob);
+			} else {
+				res += log(1.0 - network->nodes[i]->prob);
+			}
+		}
+	}
+	return res;
 }
 
 PLL_EXPORT double pll_rnetwork_reticulation_prob(pll_rnetwork_t * network, uint64_t tree_number) {
-  double res = 1.0;
-  if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
-    return PLL_FAILURE;
-  unsigned int i;
-  // TODO: This can be made more efficient by storing pointers to the reticulation nodes
-  for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i)
-  {
-	if (network->nodes[i]->is_reticulation)
-	{
-	  if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number))
-	  {
-	    res *= network->nodes[i]->prob;
-	  }
-	  else
-	  {
-	    res *= 1.0 - network->nodes[i]->prob;
-	  }
+	double res = 1.0;
+	if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
+		return PLL_FAILURE;
+	unsigned int i;
+	// TODO: This can be made more efficient by storing pointers to the reticulation nodes
+	for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i) {
+		if (network->nodes[i]->is_reticulation) {
+			if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number)) {
+				res *= network->nodes[i]->prob;
+			} else {
+				res *= 1.0 - network->nodes[i]->prob;
+			}
+		}
 	}
-  }
-  return res;
+	return res;
 }
 
 PLL_EXPORT int pll_rnetwork_can_go_tree(pll_rnetwork_node_t * parent, pll_rnetwork_node_t * child, uint64_t tree_number) {
@@ -350,4 +340,152 @@ PLL_EXPORT int pll_rnetwork_traverse(pll_rnetwork_node_t * root, int traversal, 
 	return PLL_SUCCESS;
 }
 
+/* TODO: Memory allocation checks were not implemented in this function!!! */
+static pll_rnetwork_node_t * clone_node(const pll_rnetwork_node_t * node) {
+	pll_rnetwork_node_t * new_node = (pll_rnetwork_node_t *) malloc(sizeof(pll_rnetwork_node_t));
+	memcpy(new_node, node, sizeof(pll_rnetwork_node_t));
 
+	if (node->label) {
+		new_node->label = (char *) malloc(strlen(node->label) + 1);
+		strcpy(new_node->label, node->label);
+	}
+	if (node->reticulation_name) {
+		new_node->reticulation_name = (char *) malloc(strlen(node->reticulation_name) + 1);
+		strcpy(new_node->reticulation_name, node->reticulation_name);
+	}
+
+	if (node->child) {
+		pll_rnetwork_node_t * snode = node->child;
+		pll_rnetwork_node_t * new_snode = new_node;
+		new_snode->child = (pll_rnetwork_node_t *) malloc(sizeof(pll_rnetwork_node_t));
+		memcpy(new_snode->child, snode, sizeof(pll_rnetwork_node_t));
+		new_snode->child->label = new_node->label;
+		new_snode->child->reticulation_name = new_node->reticulation_name;
+		snode = snode->child;
+		new_snode = new_snode->child;
+		new_snode->child = new_node;
+	}
+	if (node->left) {
+		pll_rnetwork_node_t * snode = node->left;
+		pll_rnetwork_node_t * new_snode = new_node;
+		new_snode->left = (pll_rnetwork_node_t *) malloc(sizeof(pll_rnetwork_node_t));
+		memcpy(new_snode->left, snode, sizeof(pll_rnetwork_node_t));
+		new_snode->left->label = new_node->label;
+		new_snode->left->reticulation_name = new_node->reticulation_name;
+		snode = snode->left;
+		new_snode = new_snode->left;
+		new_snode->left = new_node;
+	}
+	if (node->right) {
+		pll_rnetwork_node_t * snode = node->right;
+		pll_rnetwork_node_t * new_snode = new_node;
+		new_snode->right = (pll_rnetwork_node_t *) malloc(sizeof(pll_rnetwork_node_t));
+		memcpy(new_snode->right, snode, sizeof(pll_rnetwork_node_t));
+		new_snode->right->label = new_node->label;
+		new_snode->right->reticulation_name = new_node->reticulation_name;
+		snode = snode->right;
+		new_snode = new_snode->right;
+		new_snode->right = new_node;
+	}
+
+	return new_node;
+}
+
+static void rnetwork_recurse_clone(pll_rnetwork_node_t * new_root, const pll_rnetwork_node_t * root) {
+	if (root->is_reticulation) {
+		const pll_rnetwork_node_t * node = root->child;
+		if (node) {
+			new_root->child = clone_node(node);
+			if (node->first_parent == root) {
+				new_root->child->first_parent = new_root;
+			} else {
+				new_root->child->second_parent = new_root;
+			}
+
+			if (node->is_reticulation) {
+				if (node->child) {
+					pll_rnetwork_node_t * snode = node->child;
+					pll_rnetwork_node_t * new_snode = new_root->child->child;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			} else {
+				if (node->left) {
+					pll_rnetwork_node_t * snode = node->left;
+					pll_rnetwork_node_t * new_snode = new_root->child->left;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+				if (node->right) {
+					pll_rnetwork_node_t * snode = node->right;
+					pll_rnetwork_node_t * new_snode = new_root->child->right;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			}
+		}
+	} else {
+		const pll_rnetwork_node_t * node_left = root->left;
+		if (node_left) {
+			new_root->left = clone_node(node_left);
+			new_root->left->parent = new_root;
+
+			if (node_left->is_reticulation) {
+				if (node_left->child) {
+					pll_rnetwork_node_t * snode = node_left->child;
+					pll_rnetwork_node_t * new_snode = new_root->left->child;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			} else {
+				if (node_left->left) {
+					pll_rnetwork_node_t * snode = node_left->left;
+					pll_rnetwork_node_t * new_snode = new_root->left->left;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+				if (node_left->right) {
+					pll_rnetwork_node_t * snode = node_left->right;
+					pll_rnetwork_node_t * new_snode = new_root->left->right;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			}
+		}
+
+		const pll_rnetwork_node_t * node_right = root->right;
+		if (node_right) {
+			new_root->right = clone_node(node_right);
+			new_root->right->parent = new_root;
+
+			if (node_right->is_reticulation) {
+				if (node_right->child) {
+					pll_rnetwork_node_t * snode = node_right->child;
+					pll_rnetwork_node_t * new_snode = new_root->right->child;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			} else {
+				if (node_right->left) {
+					pll_rnetwork_node_t * snode = node_right->left;
+					pll_rnetwork_node_t * new_snode = new_root->right->left;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+				if (node_right->right) {
+					pll_rnetwork_node_t * snode = node_right->right;
+					pll_rnetwork_node_t * new_snode = new_root->right->right;
+					rnetwork_recurse_clone(new_snode, snode);
+				}
+			}
+		}
+	}
+}
+
+PLL_EXPORT pll_rnetwork_node_t * pll_rnetwork_graph_clone(const pll_rnetwork_node_t * root) {
+	pll_rnetwork_node_t * new_root = clone_node(root);
+	const pll_rnetwork_node_t * snode = root;
+	pll_rnetwork_node_t * new_snode = new_root;
+	rnetwork_recurse_clone(new_snode, snode);
+	return new_root;
+}
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_clone(const pll_rnetwork_t * network) {
+	/* choose the last inner node as the starting point of the clone. It does not
+	 really matter which node to choose, but since the newick parser places the
+	 root node at the end of the list, we use the same notation here */
+	pll_rnetwork_node_t * root = pll_rnetwork_graph_clone(network->root);
+	return pll_rnetwork_wrapnetwork(root);
+}
