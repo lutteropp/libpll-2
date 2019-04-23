@@ -457,6 +457,9 @@ typedef struct pll_rnetwork_s
   unsigned int tip_count;
   unsigned int inner_tree_count;
   unsigned int reticulation_count;
+  unsigned int edge_count;
+  unsigned int tree_edge_count;
+  int binary;
   pll_rnetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
   pll_rnetwork_node_t * root;
 } pll_rnetwork_t;

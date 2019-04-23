@@ -477,6 +477,9 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   root->scaler_idx = scaler_index;
   network->nodes[inner_index] = root;
   network->root = root;
+  network->edge_count = reticulation_cnt + inner_tree_cnt * 2;
+  network->tree_edge_count = inner_tree_cnt * 2;
+  network->binary = 1;
 
   return network;
 }
