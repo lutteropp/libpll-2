@@ -383,6 +383,8 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
   if (!node->is_reticulation && !node->left && !node->right)
   { // we are at a tip node
     node->idx = *tip_index;
+    node->clv_index = *tip_index;
+    node->pmatrix_index = *tip_index;
     node->scaler_idx = PLL_SCALE_BUFFER_NONE;
     array[*tip_index] = node;
     *tip_index = *tip_index + 1;
@@ -406,6 +408,8 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
 
   array[*inner_index] = node;
   node->idx = *inner_index;
+  node->clv_index = *inner_index;
+  node->pmatrix_index = *inner_index;
   node->scaler_idx = *scaler_index;
   *inner_index = *inner_index + 1;
   *scaler_index = *scaler_index + 1;
@@ -474,6 +478,8 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root)
   fill_nodes_recursive(root->left, network->nodes, &tip_index, &inner_index, &scaler_index);
   fill_nodes_recursive(root->right, network->nodes, &tip_index, &inner_index, &scaler_index);
   root->idx = inner_index;
+  root->clv_index = inner_index;
+  root->pmatrix_index = inner_index;
   root->scaler_idx = scaler_index;
   network->nodes[inner_index] = root;
   network->root = root;

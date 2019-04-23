@@ -430,6 +430,8 @@ typedef struct pll_rnetwork_node_s
 {
   char* label;
   unsigned int idx; // index in the nodes array
+  unsigned int clv_index; // same as idx
+  unsigned int pmatrix_index; // same as idx
   int is_reticulation;
   void* data;
   unsigned int scaler_idx;
