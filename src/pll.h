@@ -205,6 +205,7 @@
 #define PLL_STATE_CTZ    PLL_CTZ64
 
 typedef unsigned long long pll_state_t;
+typedef int pll_bool_t;
 
 typedef struct pll_hardware_s
 {
@@ -586,6 +587,7 @@ PLL_EXPORT extern __thread pll_hardware_t pll_hardware;
 PLL_EXPORT extern const pll_state_t pll_map_bin[256];
 PLL_EXPORT extern const pll_state_t pll_map_nt[256];
 PLL_EXPORT extern const pll_state_t pll_map_aa[256];
+PLL_EXPORT extern const pll_state_t pll_map_gt10[256];
 PLL_EXPORT extern const unsigned int pll_map_fasta[256];
 PLL_EXPORT extern const unsigned int pll_map_phylip[256];
 PLL_EXPORT extern const unsigned int pll_map_generic[256];
@@ -802,6 +804,28 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl);
 
+PLL_EXPORT int pll_compute_node_ancestral(pll_partition_t * partition,
+                                          unsigned int node_clv_index,
+                                          int node_scaler_index,
+                                          unsigned int other_clv_index,
+                                          int other_scaler_index,
+                                          unsigned int matrix_index,
+                                          const unsigned int * freqs_indices,
+                                          double * ancestral);
+
+PLL_EXPORT int pll_compute_node_ancestral_extbuf(pll_partition_t * partition,
+                                                 unsigned int node_clv_index,
+                                                 int node_scaler_index,
+                                                 unsigned int other_clv_index,
+                                                 int other_scaler_index,
+                                                 unsigned int pmatrix_index,
+                                                 const unsigned int * freqs_indices,
+                                                 double * ancestral,
+                                                 double * temp_clv,
+                                                 unsigned int * temp_scaler,
+                                                 double * ident_pmat);
+
+
 /* functions in partials.c */
 
 PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
@@ -986,6 +1010,8 @@ PLL_EXPORT void pll_phylip_close(pll_phylip_t * fd);
 PLL_EXPORT pll_msa_t * pll_phylip_parse_interleaved(pll_phylip_t * fd);
 
 PLL_EXPORT pll_msa_t * pll_phylip_parse_sequential(pll_phylip_t * fd);
+
+pll_msa_t * pll_phylip_load(const char * fname, pll_bool_t interleaved);
 
 /* functions in rtree.c */
 
