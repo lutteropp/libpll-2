@@ -135,6 +135,12 @@
 #define PLL_UTREE_MOVE_NNI_LEFT             1
 #define PLL_UTREE_MOVE_NNI_RIGHT            2
 
+#define PLL_UNETWORK_MOVE_SPR               1
+#define PLL_UNETWORK_MOVE_NNI               2
+
+#define PLL_UNETWORK_MOVE_NNI_LEFT          1
+#define PLL_UNETWORK_MOVE_NNI_RIGHT         2
+
 #define PLL_TREE_TRAVERSE_POSTORDER         1
 #define PLL_TREE_TRAVERSE_PREORDER          2
 
@@ -534,6 +540,30 @@ typedef struct pll_utree_rb_s
     } nni;
   };
 } pll_utree_rb_t;
+
+typedef struct pll_unetwork_rb_s
+{
+  int move_type;
+  union
+  {
+    struct
+    {
+      pll_unetwork_node_t * p;
+      pll_unetwork_node_t * r;
+      pll_unetwork_node_t * rb;
+      pll_unetwork_node_t * pnb;
+      pll_unetwork_node_t * pnnb;
+      double r_len;
+      double pnb_len;
+      double pnnb_len;
+    } spr;
+    struct
+    {
+      pll_unetwork_node_t * p;
+      int nni_type;
+    } nni;
+  };
+} pll_unetwork_rb_t;
 
 /* structures for parsimony */
 
@@ -973,6 +1003,9 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick_string(const char * s);
 
 PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * root,
                                   void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * node,
+                                                 unsigned int tip_count);
 
 PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
                                         void (*cb_destroy)(void *));
@@ -2658,6 +2691,28 @@ PLL_EXPORT int pll_utree_rollback(pll_utree_rb_t * rollback,
                                   double * branch_lengths,
                                   unsigned int * matrix_indices);
 
+/* functions in unetwork_moves.c */
+
+PLL_EXPORT int pll_unetwork_spr(pll_unetwork_node_t * p,
+                             pll_unetwork_node_t * r,
+                             pll_unetwork_rb_t * rb,
+                             double * branch_lengths,
+                             unsigned int * matrix_indices);
+
+PLL_EXPORT int pll_unetwork_spr_safe(pll_unetwork_node_t * p,
+                                  pll_unetwork_node_t * r,
+                                  pll_unetwork_rb_t * rb,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices);
+
+PLL_EXPORT int pll_unetwork_nni(pll_unetwork_node_t * p,
+                             int type,
+                             pll_unetwork_rb_t * rb);
+
+PLL_EXPORT int pll_unetwork_rollback(pll_unetwork_rb_t * rollback,
+                                  double * branch_lengths,
+                                  unsigned int * matrix_indices);
+
 /* functions in parsimony.c */
 
 PLL_EXPORT int pll_set_parsimony_sequence(pll_parsimony_t * pars,
@@ -2774,6 +2829,14 @@ PLL_EXPORT unsigned int pll_fastparsimony_edge_score_avx2(const pll_parsimony_t 
 /* functions in stepwise.c */
 
 PLL_EXPORT pll_utree_t * pll_fastparsimony_stepwise(pll_parsimony_t ** list,
+                                                    char * const * labels,
+                                                    unsigned int * score,
+                                                    unsigned int count,
+                                                    unsigned int seed);
+
+/* functions in stepwise_network.c */
+
+PLL_EXPORT pll_unetwork_t * pll_fastparsimony_stepwise_network(pll_parsimony_t ** list,
                                                     char * const * labels,
                                                     unsigned int * score,
                                                     unsigned int count,
