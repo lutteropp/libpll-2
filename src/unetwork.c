@@ -153,6 +153,45 @@ static void unetwork_tree_traverse_recursive(pll_unetwork_node_t * node,
   }
 }
 
+static void unetwork_traverse_recursive(pll_unetwork_node_t * node,
+                                     int traversal,
+                                     int (*cbtrav)(pll_unetwork_node_t *),
+                                     unsigned int * index,
+									 pll_unetwork_node_t ** outbuffer)
+{
+  if (!cbtrav(node))
+    return;
+
+  if (traversal == PLL_NETWORK_TRAVERSE_PREORDER)
+  {
+	if (count_active_outgoing(node) > 1) {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+	}
+  }
+
+  if (node->next)
+  {
+	pll_unetwork_node_t * snode = node->next;
+    do
+    {
+      if (snode->active) {
+        unetwork_traverse_recursive(snode->back, traversal, cbtrav, index, outbuffer);
+      }
+      snode = snode->next;
+    }
+    while (snode && snode != node);
+  }
+
+  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER)
+  {
+	if (count_active_outgoing(node) > 1) {
+      outbuffer[*index] = node;
+      *index = *index + 1;
+	}
+  }
+}
+
 PLL_EXPORT int pll_unetwork_set_reticulation_parents(pll_unetwork_t * network, uint64_t tree_number) {
   if (!network->binary) {
     return PLL_FAILURE;
@@ -236,6 +275,45 @@ PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
 	}
 	if (network->vroot->active) {
 	  unetwork_tree_traverse_recursive(network->vroot, traversal, cbtrav, trav_size, outbuffer);
+	}
+  }
+  else
+  {
+	snprintf(pll_errmsg, 200, "Invalid traversal value.");
+	pll_errno = PLL_ERROR_PARAM_INVALID;
+	return PLL_FAILURE;
+  }
+
+  return PLL_SUCCESS;
+}
+
+PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * network,
+                                  int traversal,
+                                  int (*cbtrav)(pll_unetwork_node_t *),
+                                  pll_unetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size) {
+  *trav_size = 0;
+
+  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER ||
+	  traversal == PLL_NETWORK_TRAVERSE_PREORDER)
+  {
+
+	/* we will traverse an unrooted network in the following way
+
+				2
+			  /
+		1  --*
+			  \
+				3
+
+	   at each node the callback function is called to decide whether we
+	   are going to traversing the subtree rooted at the specific node */
+
+	if (network->back->active) {
+	  unetwork_traverse_recursive(network->back, traversal, cbtrav, trav_size, outbuffer);
+	}
+	if (network->active) {
+	  unetwork_traverse_recursive(network, traversal, cbtrav, trav_size, outbuffer);
 	}
   }
   else
@@ -821,5 +899,30 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
 
   free(reticulation_nodes);
   return pll_unetwork_wrapnetwork(uroot,0);
+}
+
+PLL_EXPORT void pll_unetwork_create_pars_buildops(pll_unetwork_node_t * const* trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count)
+{
+  const pll_unetwork_node_t * node;
+  unsigned int i;
+
+  *ops_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+    node = trav_buffer[i];
+
+    if (node->next)
+    {
+      ops[*ops_count].parent_score_index = node->clv_index;
+      ops[*ops_count].child1_score_index = node->next->back->clv_index;
+      ops[*ops_count].child2_score_index = node->next->next->back->clv_index;
+
+      *ops_count = *ops_count + 1;
+    }
+  }
 }
 

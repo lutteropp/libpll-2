@@ -1200,6 +1200,12 @@ PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
                                   pll_unetwork_node_t ** outbuffer,
                                   unsigned int * trav_size, uint64_t tree_number);
 
+PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * network,
+                                  int traversal,
+                                  int (*cbtrav)(pll_unetwork_node_t *),
+                                  pll_unetwork_node_t ** outbuffer,
+                                  unsigned int * trav_size);
+
 PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav_buffer,
                                             unsigned int trav_buffer_size,
                                             double * branches,
@@ -1217,6 +1223,19 @@ PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_nod
 PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * root);
 
 PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network);
+
+PLL_EXPORT int pll_unetwork_every(pll_unetwork_t * network,
+                               int (*cb)(const pll_unetwork_t *,
+                                         const pll_unetwork_node_t *));
+
+PLL_EXPORT int pll_unetwork_every_const(const pll_unetwork_t * network,
+                                     int (*cb)(const pll_unetwork_t * network,
+                                               const pll_unetwork_node_t *));
+
+PLL_EXPORT void pll_unetwork_create_pars_buildops(pll_unetwork_node_t * const* trav_buffer,
+                                               unsigned int trav_buffer_size,
+                                               pll_pars_buildop_t * ops,
+                                               unsigned int * ops_count);
 
 PLL_EXPORT int node_is_inner_tree(const pll_unetwork_node_t * node);
 PLL_EXPORT int node_is_reticulation(const pll_unetwork_node_t * node);

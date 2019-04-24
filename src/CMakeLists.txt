@@ -94,8 +94,10 @@ set(LIBPLL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/compress.c
   ${CMAKE_CURRENT_SOURCE_DIR}/rnetwork.c
   ${CMAKE_CURRENT_SOURCE_DIR}/unetwork.c
   ${CMAKE_CURRENT_SOURCE_DIR}/stepwise.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/stepwise_network.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree_moves.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/unetwork_moves.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree_svg.c
   )
 
