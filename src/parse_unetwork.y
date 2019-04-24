@@ -33,10 +33,15 @@ extern struct pll_unetwork_buffer_state * pll_unetwork__scan_string(const char *
 extern void pll_unetwork__delete_buffer(struct pll_unetwork_buffer_state * buffer);
 
 static unsigned int tip_cnt = 0;
+static unsigned int inner_tree_cnt = 0;
+static unsigned int reticulation_cnt = 0;
+static pll_unetwork_node_t ** reticulation_node_pointers;
+static char* reticulation_node_names[64];
 
 static pll_unetwork_node_t * alloc_node()
 {
-  pll_unetwork_node_t * node = (pll_unetwork_node_t *)calloc(1, sizeof(pll_unetwork_node_t)); 
+  pll_unetwork_node_t * node = (pll_unetwork_node_t *)calloc(1, sizeof(pll_unetwork_node_t));
+  node->reticulation_index = -1;
   return node;
 }
 
@@ -57,6 +62,8 @@ static void close_roundabout(pll_unetwork_node_t * first)
   	  last->next->label = last->label;
   	if (!last->next->reticulation_name)
   	  last->next->reticulation_name = last->reticulation_name;
+  	if (last->next->reticulation_index == -1)
+  	  last->next->reticulation_index = last->reticulation_index;
   	last = last->next;
   }
   last->next = first;
@@ -159,7 +166,6 @@ static void pll_unetwork_error(pll_unetwork_node_t * node, const char * s)
 %destructor { free($$); } NUMBER
 %destructor { free($$); } label
 
-
 %token OPAR
 %token CPAR
 %token COMMA
@@ -167,38 +173,53 @@ static void pll_unetwork_error(pll_unetwork_node_t * node, const char * s)
 %token<s> STRING
 %token<d> NUMBER
 %type<s> label optional_label
-%type<d> number optional_length
+%type<d> number optional_length optional_number_after_colon
 %type<network> subnetwork descendant_list_item descendant_list
 %start input
 %%
 
 input: descendant_list optional_label optional_length SEMICOLON
 {
- network->back = $1->back;
- $1->back->back = network;
- network->next = $1->next;
- network->node_index = $1->node_index;
- network->length = $1->length;
- network->label = $2;
- close_roundabout(network);
- free($1);
- /* ignore root length if specified -> we create an unrooted network structure! */
- if ($3)
-   free($3);
+  // not sure if we need this
+  inner_tree_cnt++;
+
+  network->back = $1->back;
+  $1->back->back = network;
+  network->next = $1->next;
+  network->node_index = $1->node_index;
+  network->length = $1->length;
+  network->prob = 1.0;
+  network->support = 0;
+  network->label = $2;
+  network->reticulation_name = NULL;
+  network->incoming = 0; // ?
+  network->active = 1;
+  network->reticulation_index = -1;
+  close_roundabout(network);
+  free($1);
+  /* ignore root length if specified -> we create an unrooted network structure! */
+  if ($3)
+    free($3);
 };
-	
+
 descendant_list: OPAR  descendant_list_item CPAR
 {
   $$=$2;
 };
-	
+
 descendant_list_item: subnetwork
 {
   /* create inner node (1st subnetwork)  */
   $$ = alloc_node();
   $$->back = $1;
+  $$->incoming = 1; // ?
+  $$->active = 1;
   $1->back = $$;
+  $1->incoming = 0; // ?
+  $$->active = 1;
   $$->length = $1->length;
+  $$->prob = $1->prob;
+  $$->support = $1->support;
 }
 	| descendant_list_item COMMA subnetwork
 {
@@ -210,9 +231,15 @@ descendant_list_item: subnetwork
   }
   last->next = alloc_node();
   last->next->label = last->label;
+  last->next->reticulation_name = last->reticulation_name;
   last->next->length = $3->length;
+  last->next->prob = $3->prob;
   last->next->back = $3;
+  last->next->active = 1;
+  last->next->incoming = 0; // ?
   $3->back = last->next;
+  $3->active = 1;
+  $3->incoming = 1; // ?
 };
 
 subnetwork : descendant_list optional_label optional_length
@@ -220,7 +247,11 @@ subnetwork : descendant_list optional_label optional_length
   /* create internal node */
   $$ = alloc_node();
   $$->next = $1;
-  $$->label=$2;
+  $$->label= $2;
+  $$->reticulation_name = NULL;
+  $$->active = 1;
+  $$->prob = 1.0;
+  $$->incoming = 1; // ?
   if ($3)
   {
     $$->length = atof($3);
@@ -231,11 +262,135 @@ subnetwork : descendant_list optional_label optional_length
   
   close_roundabout($$);
 }
+         | descendant_list optional_label '#' label ':' optional_number_after_colon ':' optional_number_after_colon ':' optional_number_after_colon // branch length, support, inheritance probability
+{
+  /* create internal reticulation node */
+  $$ = alloc_node();
+  $$->next = $1;
+  $$->label= $2;
+  $$->reticulation_name = $4;
+  $$->reticulation_index = reticulation_cnt;
+  $$->active = 1;
+  $$->incoming = 1; // ?
+  if ($6)
+  {
+    $$->length = atof($6);
+    free($6);
+  }
+  else
+    $$->length = 0;
+  if ($8)
+  {
+    $$->support = atof($8);
+    free($8);
+  }
+  else
+    $$->support = 0;
+  if ($10)
+  {
+    $$->prob = atof($10);
+    free($10);
+  }
+  else
+    $$->prob = 0.5;
+  
+  close_roundabout($$);
+  reticulation_node_pointers[reticulation_cnt] = $$;
+  reticulation_node_names[reticulation_cnt] = $$->reticulation_name;
+  reticulation_cnt++;
+}
+         | descendant_list optional_label '#' label
+{
+  /* create internal reticulation node */
+  $$ = alloc_node();
+  $$->next = $1;
+  $$->label= $2;
+  $$->reticulation_name = $4;
+  $$->reticulation_index = reticulation_cnt;
+  $$->active = 1;
+  $$->incoming = 1; // ?
+  $$->length = 0;
+  $$->support = 0;
+  $$->prob = 0.5;
+  
+  close_roundabout($$);
+  reticulation_node_pointers[reticulation_cnt] = $$;
+  reticulation_node_names[reticulation_cnt] = $$->reticulation_name;
+  reticulation_cnt++;
+}
+         | optional_label '#' label optional_length
+{
+  unsigned int i = 0;
+  for (i = 0; i < reticulation_cnt; ++i)
+  {
+    if (strcmp(reticulation_node_names[i],$3) == 0)
+    {
+      // add another parent
+      $$ = alloc_node();
+      $$->next = reticulation_node_pointers[i];
+      $$->label = $1;
+      $$->reticulation_name = $3;
+      if ($4) {
+        $$->length = atof($4);
+        free($4); 
+      } else {
+        $$->length = 0;
+      }
+      $$->support = 0;
+      $$->active = 1;
+      $$->incoming = 0; // ?
+      $$->prob = 0.5;
+      close_roundabout($$);
+      break;
+    }
+  }
+}
+        | optional_label '#' label ':' optional_number_after_colon ':' optional_number_after_colon ':' number // branch length, support, probability
+{
+  unsigned int i = 0;
+  for (i = 0; i < reticulation_cnt; ++i)
+  {
+    if (strcmp(reticulation_node_names[i],$3) == 0)
+    {
+      // add another parent
+      $$ = alloc_node();
+      $$->next = reticulation_node_pointers[i];
+      $$->label = $1;
+      $$->reticulation_name = $3;
+      if ($5) {
+        $$->length = atof($5);
+        free($5); 
+      } else {
+        $$->length = 0;
+      }
+      if ($7) {
+        $$->support = atof($7);
+        free($7); 
+      } else {
+        $$->support = 0;
+      }
+      if ($9) {
+        $$->prob = atof($9);
+        free($9); 
+      } else {
+        $$->prob = 0.5;
+      }
+      $$->active = 1;
+      $$->incoming = 0; // ?
+      close_roundabout($$);
+      break;
+    }
+  }
+}
+
          | label optional_length
 {
   /* create tip node */
   $$ = alloc_node();
   $$->label = $1;
+  $$->incoming = 1; // ?
+  $$->active = 1;
+  $$->prob = 1.0;
   if ($2)
   {
     $$->length = atof($2);
@@ -247,10 +402,11 @@ subnetwork : descendant_list optional_label optional_length
   tip_cnt++;
 };
 
-optional_label:  { $$ = NULL;} | label  {$$ = $1;};
-optional_length: { $$ = NULL;} | COLON number {$$ = $2;};
-label: STRING    { $$=$1;} | NUMBER {$$=$1;};
-number: NUMBER   { $$=$1;};
+optional_label:  {$$ = NULL;} | label  {$$ = $1;};
+optional_length: {$$ = NULL;} | ':' number {$$ = $2;};
+label: STRING    {$$=$1;} | NUMBER {$$=$1;};
+number: NUMBER   {$$=$1;};
+optional_number_after_colon: {$$ = NULL;} | number {$$ = $1;};
 
 %%
 
@@ -268,12 +424,14 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
 {
   if (!node->next)
   {
-    /* tip node */
-    node->node_index = *tip_clv_index;
-    node->clv_index = *tip_clv_index;
-    node->pmatrix_index = *tip_clv_index;
-    node->scaler_index = PLL_SCALE_BUFFER_NONE;
-    *tip_clv_index = *tip_clv_index + 1;
+    if (node->active) {
+      /* tip node */
+      node->node_index = *tip_clv_index;
+      node->clv_index = *tip_clv_index;
+      node->pmatrix_index = *tip_clv_index;
+      node->scaler_index = PLL_SCALE_BUFFER_NONE;
+      *tip_clv_index = *tip_clv_index + 1;
+    }
   }
   else
   {
@@ -281,12 +439,14 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
     do 
     {
-      recursive_assign_indices(snode->back,
-                               tip_clv_index,
-                               inner_clv_index,
-                               inner_scaler_index,
-                               inner_node_index,
-                               level+1);
+      if (snode->active) {
+        recursive_assign_indices(snode->back,
+                                 tip_clv_index,
+                                 inner_clv_index,
+                                 inner_scaler_index,
+                                 inner_node_index,
+                                 level+1);
+      }
       snode = snode->next;
     }
     while (snode != node);
@@ -294,19 +454,23 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
     snode = node;
     do 
     {
-      snode->node_index = (*inner_node_index)++;
-      snode->clv_index = *inner_clv_index;
-      snode->scaler_index = *inner_scaler_index;
-      if (snode == node && level > 0)
-      	snode->pmatrix_index = *inner_clv_index; 
-      else
-      	snode->pmatrix_index = snode->back->pmatrix_index;
+      if (snode->active) {
+        snode->node_index = (*inner_node_index)++;
+        snode->clv_index = *inner_clv_index;
+        snode->scaler_index = *inner_scaler_index;
+        if (snode == node && level > 0)
+      	  snode->pmatrix_index = *inner_clv_index; 
+        else
+          snode->pmatrix_index = snode->back->pmatrix_index;
+       }
       snode = snode->next;
     }
     while (snode != node);
     
-    *inner_clv_index += 1;
-    *inner_scaler_index += 1;
+    if (node->active) {
+      *inner_clv_index += 1;
+      *inner_scaler_index += 1;
+    }
   }
 }
 
@@ -617,11 +781,15 @@ static pll_unetwork_t * unetwork_parse_newick(const char * filename, int auto_un
     return PLL_FAILURE;
   }
 
-  /* initialize clv and scaler indices to the default template */
-  pll_unetwork_reset_template_indices(root, tip_cnt);
-
   /* wrap network */
   network = unetwork_wrapnetwork(root, 0, 0, 0, 0);
+
+  pll_unetwork_set_reticulation_parents(network, 0);
+
+  /* initialize clv and scaler indices to the default template */
+  pll_unetwork_reset_template_indices(root, tip_cnt);
+  
+  pll_unetwork_forget_reticulation_parents(network);
 
   return network;
 }
