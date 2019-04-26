@@ -232,17 +232,10 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
                                                 unsigned int * tip_count,
                                                 unsigned int * inner_tree_count,
 												unsigned int * reticulation_count,
-                                                unsigned int level)
+                                                unsigned int level,
+												int* visited_reticulations)
 {
-  // we need to use the data pointer here, to be sure we don't visit a node twice.
-  if (node->data)
-  {
-	return 0;
-  }
-  else {
-	node->data = (int*) 1;
-	node->back->data = (int*) 1;
-  }
+  // TODO: This is still wrong...
 
   if (!node->next) // we have a tip node
   {
@@ -256,9 +249,10 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
 	do
 	{
-	  if (snode->active)
+	  if (!snode->incoming)
 	  {
-	    count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1);
+		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
+	      count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1, visited_reticulations);
 	  }
 	  snode = snode->next;
 	}
@@ -266,6 +260,7 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
 
 	if (node_is_reticulation(node)) {
 	  *reticulation_count += 1;
+	  visited_reticulations[node->reticulation_index] += 1;
 	} else {
       *inner_tree_count += 1;
 	}
@@ -294,7 +289,14 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   if (!root->next)
     root = root->back;
 
-  count = unetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count, 0);
+  int* visited_reticulations = (int *)malloc(MAX_RETICULATION_COUNT * sizeof(int));
+  int i;
+  for (i = 0; i < MAX_RETICULATION_COUNT; ++i)
+  {
+	visited_reticulations[i] = 0;
+  }
+  count = unetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count, 0, visited_reticulations);
+  free(visited_reticulations);
 
   printf("count: %d\n", count);
    printf("tip count: %d\n", *tip_count);

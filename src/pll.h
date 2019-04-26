@@ -433,6 +433,8 @@ typedef struct pll_rtree_s
 
 } pll_rtree_t;
 
+static const int MAX_RETICULATION_COUNT = 64;
+
 typedef struct pll_rnetwork_node_s
 {
   char* label;
