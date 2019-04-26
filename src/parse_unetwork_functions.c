@@ -240,8 +240,8 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
 	return 0;
   }
   else {
-	node->data = 1;
-	node->back->data = 1;
+	node->data = (int*) 1;
+	node->back->data = (int*) 1;
   }
 
   if (!node->next) // we have a tip node
@@ -296,11 +296,13 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
 
   count = unetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count, 0);
 
+  printf("count: %d\n", count);
+   printf("tip count: %d\n", *tip_count);
+   printf("inner tree count: %d\n", *inner_tree_count);
+   printf("reticulation count: %d\n", *reticulation_count);
+
   if (tip_count && inner_tree_count && reticulation_count)
     assert(count == *tip_count + *inner_tree_count + *reticulation_count);
-
-  *inner_tree_count -= *reticulation_count;
-  count -= *reticulation_count;
 
   return count;
 }
@@ -336,7 +338,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
     if (tip_count == 0)
     {
       node_count = unetwork_count_nodes(root, &tip_count, &inner_tree_count, &reticulation_count);
-      if (inner_tree_count != tip_count - 2)
+      if (inner_tree_count != tip_count - 2 + reticulation_count)
       {
         snprintf(pll_errmsg, 200, "Input network is not strictly bifurcating.");
         pll_errno = PLL_ERROR_PARAM_INVALID;
@@ -345,7 +347,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
     }
     else
     {
-      inner_tree_count = tip_count - 2;
+      inner_tree_count = tip_count - 2 + reticulation_count;
       node_count = tip_count + inner_tree_count + reticulation_count;
     }
   }
@@ -391,8 +393,8 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->tip_count = tip_count;
   network->inner_tree_count = inner_tree_count;
   network->reticulation_count = reticulation_count;
-  network->edge_count = node_count - 1; // TODO: is this correct?
-  network->tree_edge_count = node_count - reticulation_count - 1; // TODO: is this correct?
+  network->edge_count = network->inner_tree_count * 2 + network->reticulation_count;
+  network->tree_edge_count = network->inner_tree_count * 2;
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
 
