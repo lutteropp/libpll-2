@@ -191,40 +191,45 @@ PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * root,
 }
 
 static void fill_nodes_recursive(pll_unetwork_node_t * node,
-                                 pll_unetwork_node_t ** array,
-								 pll_unetwork_node_t ** reticulation_nodes,
-                                 unsigned int array_size,
-                                 unsigned int * tip_index,
-                                 unsigned int * inner_index,
-                                 unsigned int level)
+                                         pll_unetwork_node_t ** array,
+		                                 pll_unetwork_node_t ** reticulation_nodes,
+                                         unsigned int array_size,
+                                         unsigned int * tip_index,
+                                         unsigned int * inner_index,
+                                         unsigned int level,
+	                                     int* visited_reticulations)
 {
   unsigned int index;
-  if (!node->next)
+  if (!node->next) // we have a tip node
   {
-    /* tip node */
     index = *tip_index;
     *tip_index += 1;
   }
   else
   {
-    /* inner node */
+	/* inner node */
     pll_unetwork_node_t * snode = level ? node->next : node;
-    do
-    {
-      fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
-                           inner_index, level+1);
-      snode = snode->next;
-    }
-    while (snode != node);
+	do
+	{
+	  if (!snode->back->incoming)
+	  {
+		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
+			fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
+			                               inner_index, level+1, visited_reticulations);
+	  }
+	  snode = snode->next;
+	}
+	while (snode != node);
 
-    index = *inner_index;
-    *inner_index += 1;
-  }
+	index = *inner_index;
+	*inner_index += 1;
 
-  assert(index < array_size);
-  array[index] = node;
-  if (node_is_reticulation(node)) {
-    reticulation_nodes[node->reticulation_index] = node;
+	assert(index < array_size);
+	array[index] = node;
+	if (node_is_reticulation(node)) {
+	  reticulation_nodes[node->reticulation_index] = node;
+	  visited_reticulations[node->reticulation_index] += 1;
+	}
   }
 }
 
@@ -235,8 +240,6 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
                                                 unsigned int level,
 												int* visited_reticulations)
 {
-  // TODO: This is still wrong...
-
   if (!node->next) // we have a tip node
   {
     *tip_count += 1;
@@ -387,7 +390,14 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   unsigned int tip_index = 0;
   unsigned int inner_index = tip_count;
 
-  fill_nodes_recursive(root, network->nodes, network->reticulation_nodes, node_count, &tip_index, &inner_index, 0);
+  int* visited_reticulations = (int *)malloc(MAX_RETICULATION_COUNT * sizeof(int));
+  int i;
+  for (i = 0; i < MAX_RETICULATION_COUNT; ++i)
+  {
+  	visited_reticulations[i] = 0;
+  }
+  fill_nodes_recursive(root, network->nodes, network->reticulation_nodes, node_count, &tip_index, &inner_index, 0, visited_reticulations);
+  free(visited_reticulations);
 
   assert(tip_index == tip_count);
   assert(inner_index == tip_count + inner_tree_count + reticulation_count);
