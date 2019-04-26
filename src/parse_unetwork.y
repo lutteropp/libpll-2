@@ -220,6 +220,7 @@ descendant_list_item: subnetwork
   $$->length = $1->length;
   $$->prob = $1->prob;
   $$->support = $1->support;
+  close_roundabout($$);
 }
 	| descendant_list_item COMMA subnetwork
 {
@@ -240,6 +241,7 @@ descendant_list_item: subnetwork
   $3->back = last->next;
   $3->active = 1;
   $3->incoming = 1; // ?
+  close_roundabout($$);
 };
 
 subnetwork : descendant_list optional_label optional_length
@@ -398,6 +400,7 @@ subnetwork : descendant_list optional_label optional_length
   }
   else
     $$->length = 0;
+  close_roundabout($$);
   
   tip_cnt++;
 };

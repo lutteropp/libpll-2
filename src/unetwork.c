@@ -51,24 +51,30 @@ unsigned int count_outgoing(const pll_unetwork_node_t * node) {
 unsigned int count_active_outgoing(const pll_unetwork_node_t * node) {
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
-	do {
+	if (!node->incoming) {
+		cnt++;
+	}
+	while (snode && snode != node) {
 		if (!snode->incoming && snode->active) {
 			cnt++;
 		}
 		snode = snode->next;
-	} while (snode && snode != node);
+	}
 	return cnt;
 }
 
 unsigned int count_incoming(const pll_unetwork_node_t * node) {
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
-	do {
+	if (node->incoming) {
+		cnt++;
+	}
+	while (snode && snode != node) {
 		if (snode->incoming) {
 			cnt++;
 		}
 		snode = snode->next;
-	} while (snode && snode != node);
+	}
 	return cnt;
 }
 
