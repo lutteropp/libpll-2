@@ -224,13 +224,13 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
 	index = *inner_index;
 	*inner_index += 1;
 
-	assert(index < array_size);
-	array[index] = node;
 	if (node_is_reticulation(node)) {
 	  reticulation_nodes[node->reticulation_index] = node;
 	  visited_reticulations[node->reticulation_index] += 1;
 	}
   }
+  assert(index < array_size);
+  array[index] = node;
 }
 
 static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
