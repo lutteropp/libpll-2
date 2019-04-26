@@ -995,7 +995,7 @@ PLL_EXPORT void pll_rnetwork_graph_destroy(pll_rnetwork_node_t * root,
 
 PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root);
 
-/* functions in parse_unetwork.y */
+/* functions in parse_unetwork_functions.c */
 
 PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick(const char * filename);
 
@@ -1013,6 +1013,21 @@ PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
 PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root, unsigned int tip_count);
 
 PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork_multi(pll_unetwork_node_t * root,
+                                                  unsigned int tip_count,
+                                                  unsigned int inner_tree_count,
+												  unsigned int reticulation_count);
+
+/* functions in parse_rnetwork_functions.c */
+
+PLL_EXPORT void pll_rnetwork_destroy(pll_rnetwork_t * root,
+                                  void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_rnetwork_graph_destroy(pll_rnetwork_node_t * root,
+                                        void (*cb_destroy)(void *));
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork(pll_rnetwork_node_t * root);
+
+PLL_EXPORT pll_rnetwork_t * pll_rnetwork_wrapnetwork_multi(pll_rnetwork_node_t * root,
                                                   unsigned int tip_count,
                                                   unsigned int inner_tree_count,
 												  unsigned int reticulation_count);

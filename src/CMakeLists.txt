@@ -41,15 +41,6 @@ FLEX_TARGET(lex_rnetwork_t
   ${CMAKE_CURRENT_SOURCE_DIR}/lex_rnetwork.l ${CMAKE_CURRENT_BINARY_DIR}/lex_rnetwork.c
   COMPILE_FLAGS ${LIBPLL_FLEX_FLAGS})
 ADD_FLEX_BISON_DEPENDENCY(lex_rnetwork_t parse_rnetwork_t)
-set(LIBPLL_BISON_FLAGS "-y -d -p pll_unetwork_")
-set(LIBPLL_FLEX_FLAGS "-P pll_unetwork_")
-BISON_TARGET(parse_unetwork_t 
-  ${CMAKE_CURRENT_SOURCE_DIR}/parse_unetwork.y ${CMAKE_CURRENT_BINARY_DIR}/parse_unetwork.c
-  COMPILE_FLAGS ${LIBPLL_BISON_FLAGS})
-FLEX_TARGET(lex_unetwork_t 
-  ${CMAKE_CURRENT_SOURCE_DIR}/lex_unetwork.l ${CMAKE_CURRENT_BINARY_DIR}/lex_unetwork.c
-  COMPILE_FLAGS ${LIBPLL_FLEX_FLAGS})
-ADD_FLEX_BISON_DEPENDENCY(lex_unetwork_t parse_unetwork_t)
 
 # needed for bison files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -98,6 +89,8 @@ set(LIBPLL_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/compress.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree_moves.c
   ${CMAKE_CURRENT_SOURCE_DIR}/unetwork_moves.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/parse_unetwork_functions.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/parse_rnetwork_functions.c
   ${CMAKE_CURRENT_SOURCE_DIR}/utree_svg.c
   )
 
