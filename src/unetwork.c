@@ -643,7 +643,7 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  }
 	  uroot->back = back;
 	  uroot->label = (root->label) ? xstrdup(root->label) : NULL;
-	  uroot->reticulation_name = (root->reticulation_name) ? xstrdup(root->reticulation_name) : NULL;
+	  uroot->reticulation_name = NULL;
 	  uroot->reticulation_index = -1;
 	  uroot->clv_index = root->clv_index;
 	  uroot->node_index = root->idx;
@@ -652,7 +652,7 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->length = uroot->back->length;
 	  uroot->prob = uroot->back->prob;
 
-	  if (!root->left)
+	  if (!root->left && !root->right)
 	  {
 		uroot->next = NULL;
 		return uroot;
@@ -685,12 +685,19 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 		  uroot->next->prob = root->left->first_parent_prob;
 		} else {
 		  uroot->next->length = root->left->second_parent_length;
-		  uroot->next->prob = 1.0 - root->left->second_parent_prob;
+		  uroot->next->prob = root->left->second_parent_prob;
 		}
 	  } else {
 		uroot->next->length = root->left->length;
 		uroot->next->prob = 1.0;
 	  }
+	  uroot->next->label = uroot->label;
+	  uroot->next->reticulation_index = uroot->reticulation_index;
+	  uroot->next->reticulation_name = uroot->reticulation_name;
+	  uroot->next->clv_index = uroot->clv_index;
+	  uroot->next->node_index = uroot->node_index;
+	  uroot->next->scaler_index = uroot->scaler_index;
+	  uroot->next->pmatrix_index = uroot->pmatrix_index;
 	  uroot->next->active = 1;
 	  uroot->next->incoming = 0;
 	  uroot->next->back = rnetwork_unroot(root->left, uroot->next, reticulation_nodes);
@@ -703,12 +710,20 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  	  uroot->next->next->prob = root->right->first_parent_prob;
 	    } else {
 	  	  uroot->next->next->length = root->right->second_parent_length;
-	  	  uroot->next->next->prob = 1.0 - root->right->second_parent_prob;
+	  	  uroot->next->next->prob = root->right->second_parent_prob;
 	    }
 	  } else {
 	  	uroot->next->next->length = root->right->length;
 	  	uroot->next->next->prob = 1.0;
 	  }
+	  uroot->next->next->label = uroot->label;
+	  uroot->next->next->reticulation_index = uroot->reticulation_index;
+	  uroot->next->next->reticulation_name = uroot->reticulation_name;
+	  uroot->next->next->clv_index = uroot->clv_index;
+	  uroot->next->next->node_index = uroot->node_index;
+	  uroot->next->next->scaler_index = uroot->scaler_index;
+	  uroot->next->next->pmatrix_index = uroot->pmatrix_index;
+
 	  uroot->next->next->active = 1;
 	  uroot->next->next->incoming = 0;
 	  uroot->next->next->back = rnetwork_unroot(root->right, uroot->next->next, reticulation_nodes);
@@ -728,6 +743,7 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->label = (root->label) ? xstrdup(root->label) : NULL;
 	  uroot->reticulation_name = (root->reticulation_name) ? xstrdup(root->reticulation_name) : NULL;
 	  uroot->reticulation_index = root->reticulation_index;
+
 	  uroot->length = uroot->back->length;
 	  uroot->prob = uroot->back->prob;
 
@@ -774,18 +790,32 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	    uroot->next->length = root->child->length;
 		uroot->next->prob = 1.0;
 	  }
+	  uroot->next->label = uroot->label;
+	  uroot->next->reticulation_name = uroot->reticulation_name;
+	  uroot->next->reticulation_index = uroot->reticulation_index;
+	  uroot->next->clv_index = uroot->clv_index;
+	  uroot->next->node_index = uroot->node_index;
+	  uroot->next->scaler_index = uroot->scaler_index;
+	  uroot->next->pmatrix_index = uroot->pmatrix_index;
+
 	  uroot->next->active = 1;
       uroot->next->incoming = 0;
 	  uroot->next->back = rnetwork_unroot(root->child, uroot->next, reticulation_nodes);
 	  uroot->next->back->active = 1;
 	  uroot->next->back->incoming = 1;
+
+	  uroot->next->next->label = uroot->label;
+	  uroot->next->next->reticulation_name = uroot->reticulation_name;
+	  uroot->next->next->reticulation_index = uroot->reticulation_index;
+	  uroot->next->next->clv_index = uroot->clv_index;
+	  uroot->next->next->node_index = uroot->node_index;
+	  uroot->next->next->scaler_index = uroot->scaler_index;
+	  uroot->next->next->pmatrix_index = uroot->pmatrix_index;
 	} else {
 	  uroot = reticulation_nodes[root->reticulation_index];
 	  uroot->back = back;
-	  uroot->label = (root->label) ? xstrdup(root->label) : NULL;
-	  uroot->reticulation_name = (root->reticulation_name) ? xstrdup(root->reticulation_name) : NULL;
-	  uroot->length = uroot->back->length;
 	  uroot->prob = uroot->back->prob;
+	  uroot->length = uroot->back->length;
 	}
   }
 
@@ -793,7 +823,7 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 }
 
 PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
-  // for each node in the rnetwork, we need to create three nodes in the unetwork
+  // for each node in the rnetwork, we need to create three nodes in the unetwork... except for the leaves.
   //new_network->nodes = (pll_unetwork_node_t**)malloc((network->tip_count + network->inner_tree_count * 2 + network->reticulation_count * 2) * sizeof(pll_unetwork_node_t*));
   pll_unetwork_node_t** reticulation_nodes = (pll_unetwork_node_t**)malloc(network->reticulation_count * sizeof(pll_unetwork_node_t*)); // we only need one representative per reticulation node
 
@@ -866,7 +896,7 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
   }
 
   uroot->label = (new_root->label) ? xstrdup(new_root->label) : NULL;
-  uroot->reticulation_name = (new_root->reticulation_name) ? xstrdup(new_root->reticulation_name) : NULL;
+  uroot->reticulation_name = NULL;
   uroot->active = 1;
   uroot->incoming = 0;
   uroot->back->active = 1;
@@ -882,8 +912,23 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
   uroot->next->label = uroot->label;
   uroot->next->reticulation_name = uroot->reticulation_name;
   uroot->next->reticulation_index = -1;
-  uroot->next->length = new_root->left->length;
-  uroot->next->prob = 1.0;
+  if (new_root->left->is_reticulation)
+  {
+    if (new_root->left->first_parent == new_root)
+    {
+      uroot->next->prob = new_root->left->first_parent_prob;
+      uroot->next->length = new_root->left->first_parent_length;
+    } else
+    {
+      uroot->next->prob = new_root->left->second_parent_prob;
+      uroot->next->length = new_root->left->second_parent_length;
+    }
+  }
+  else
+  {
+  	uroot->next->length = new_root->left->length;
+    uroot->next->prob = 1.0;
+  }
   uroot->next->back = rnetwork_unroot(new_root->left, uroot->next, reticulation_nodes);
   /* TODO: Need to clean uroot in case of error*/
   if (!uroot->next->back) return NULL;
@@ -895,8 +940,29 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
   uroot->next->next->label = uroot->label;
   uroot->next->next->reticulation_name = uroot->reticulation_name;
   uroot->next->next->reticulation_index = -1;
-  uroot->next->next->length = new_root->right->length;
-  uroot->next->next->prob = 1.0;
+
+  if (new_root->right->is_reticulation)
+  {
+	printf("first parent: %s\n", new_root->right->first_parent);
+	printf("new root: %s\n", new_root);
+
+    if (new_root->right->first_parent == new_root)
+    {
+      printf("new root is first parent\n");
+      uroot->next->next->prob = new_root->right->first_parent_prob;
+      uroot->next->next->length = new_root->right->first_parent_length;
+    } else
+    {
+      printf("new root is not first parent\n");
+      uroot->next->next->prob = new_root->right->second_parent_prob;
+      uroot->next->next->length = new_root->right->second_parent_length;
+    }
+  }
+  else
+  {
+	uroot->next->next->length = new_root->right->length;
+	uroot->next->next->prob = 1.0;
+  }
   uroot->next->next->back = rnetwork_unroot(new_root->right, uroot->next->next, reticulation_nodes);
   /* TODO: Need to clean uroot in case of error*/
   if (!uroot->next->next->back) return NULL;
