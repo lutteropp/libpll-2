@@ -234,7 +234,17 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
 												unsigned int * reticulation_count,
                                                 unsigned int level)
 {
-  if (!node->next)
+  // we need to use the data pointer here, to be sure we don't visit a node twice.
+  if (node->data)
+  {
+	return 0;
+  }
+  else {
+	node->data = 1;
+	node->back->data = 1;
+  }
+
+  if (!node->next) // we have a tip node
   {
     *tip_count += 1;
     return 1;
@@ -246,7 +256,10 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
 	do
 	{
-	  count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1);
+	  if (snode->active)
+	  {
+	    count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1);
+	  }
 	  snode = snode->next;
 	}
 	while (snode != node);
@@ -285,6 +298,9 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
 
   if (tip_count && inner_tree_count && reticulation_count)
     assert(count == *tip_count + *inner_tree_count + *reticulation_count);
+
+  *inner_tree_count -= *reticulation_count;
+  count -= *reticulation_count;
 
   return count;
 }

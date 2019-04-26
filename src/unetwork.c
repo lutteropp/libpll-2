@@ -943,17 +943,12 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
 
   if (new_root->right->is_reticulation)
   {
-	printf("first parent: %s\n", new_root->right->first_parent);
-	printf("new root: %s\n", new_root);
-
     if (new_root->right->first_parent == new_root)
     {
-      printf("new root is first parent\n");
       uroot->next->next->prob = new_root->right->first_parent_prob;
       uroot->next->next->length = new_root->right->first_parent_length;
     } else
     {
-      printf("new root is not first parent\n");
       uroot->next->next->prob = new_root->right->second_parent_prob;
       uroot->next->next->length = new_root->right->second_parent_length;
     }
