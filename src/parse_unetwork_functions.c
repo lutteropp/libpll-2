@@ -211,7 +211,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
 	do
 	{
-	  if (!snode->back->incoming)
+	  if (!snode->incoming)
 	  {
 		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
 			fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
