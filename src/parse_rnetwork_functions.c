@@ -123,7 +123,7 @@ static void fill_nodes_recursive(pll_rnetwork_node_t * node,
   *scaler_index = *scaler_index + 1;
 }
 
-static unsigned int rnetwork_count_nodes_recursive(pll_rnetwork_node_t * node,
+static unsigned int rnetwork_count_nodes_recursive(pll_rnetwork_node_t* parent, pll_rnetwork_node_t * node,
                                                 unsigned int * tip_count,
                                                 unsigned int * inner_tree_count,
 												unsigned int * reticulation_count)
@@ -143,13 +143,15 @@ static unsigned int rnetwork_count_nodes_recursive(pll_rnetwork_node_t * node,
 	 else
 	 {
 	   *inner_tree_count += 1;
-	   return 1 + rnetwork_count_nodes_recursive(node->left, tip_count, inner_tree_count, reticulation_count) + rnetwork_count_nodes_recursive(node->right, tip_count, inner_tree_count, reticulation_count);
+	   return 1 + rnetwork_count_nodes_recursive(node, node->left, tip_count, inner_tree_count, reticulation_count) + rnetwork_count_nodes_recursive(node, node->right, tip_count, inner_tree_count, reticulation_count);
 	 }
   }
-  else
+  else if (node->first_parent == parent) // don't visit reticulations more than once
   {
 	*reticulation_count += 1;
-	return 1 + rnetwork_count_nodes_recursive(node->child, tip_count, inner_tree_count, reticulation_count);
+	return 1 + rnetwork_count_nodes_recursive(node, node->child, tip_count, inner_tree_count, reticulation_count);
+  } else {
+	  return 0;
   }
 }
 
@@ -170,7 +172,7 @@ static unsigned int rnetwork_count_nodes(pll_rnetwork_node_t * root, unsigned in
   if (!root)
 	return 0;
 
-  count = rnetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count);
+  count = rnetwork_count_nodes_recursive(NULL, root, tip_count, inner_tree_count, reticulation_count);
 
   if (tip_count && inner_tree_count && reticulation_count)
     assert(count == *tip_count + *inner_tree_count + *reticulation_count);

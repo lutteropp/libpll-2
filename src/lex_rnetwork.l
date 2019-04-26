@@ -112,7 +112,7 @@ static char * append(size_t * dstlen, const char * src, size_t srclen)
 [+-]?(([0-9]+[\.]?[0-9]*)|([0-9]*[\.]?[0-9]+))([eE][+-]?[0-9]+)? {
                     pll_rnetwork_lval.d = xstrndup(pll_rnetwork_text,pll_rnetwork_leng); 
                     return NUMBER;                                             }
-[^ \'\",\(\):;\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;]* {
+[^ \'\",\(\):;#\[\]\t\n\r][^ \t\n\r\)\(\[\]\,:;#]* {
                     pll_rnetwork_lval.s = xstrndup(pll_rnetwork_text,pll_rnetwork_leng);
                     return STRING;                                             }
 [ \t\r]           { ;                                                          }

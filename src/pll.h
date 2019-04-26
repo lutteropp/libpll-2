@@ -448,11 +448,12 @@ typedef struct pll_rnetwork_node_s
 
   // the following fields are only relevant if it is a reticulation node
   char* reticulation_name;
-  unsigned int reticulation_index;
+  int reticulation_index; // -1 if not a reticulation
   double support;
-  double prob; // probability of taking the first parent, has to lie between 0 and 1.
   struct pll_rnetwork_node_s* first_parent; // the first parent has to be a non-reticulation node
   double first_parent_length; // length of the edge from the first parent node
+  double first_parent_prob;
+  double second_parent_prob;
   double second_parent_length; // length of the edge from the second parent node
   struct pll_rnetwork_node_s* second_parent; // the second parent has to be a non-reticulation node
   struct pll_rnetwork_node_s* child; // the child has to be a non-reticulation node

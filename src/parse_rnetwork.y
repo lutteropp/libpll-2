@@ -77,7 +77,7 @@ input: '(' subnetwork ',' subnetwork ')' optional_label optional_length ';'
 {
   inner_tree_cnt++;
   network->is_reticulation = 0;
-
+  network->reticulation_index = -1;
   network->left   = $2;
   network->right  = $4;
   network->label  = $6;
@@ -124,15 +124,13 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
   inner_tree_cnt++;
   $$ = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
   $$->is_reticulation = 0;
+  $$->reticulation_index = -1;
   $$->left   = $2;
   $$->right  = $4;
   $$->label  = $6;
   $$->length = $7 ? atof($7) : 0;
   free($7);
   $$->idx = 0;
-
-  $$->left->parent  = $$;
-  $$->right->parent = $$;
 
   if ($$->left->is_reticulation)
   {
@@ -165,8 +163,6 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
   {
     $$->right->parent = $$;
   }
-
-
 }
        | '(' subnetwork ')' optional_label '#' label ':' optional_number_after_colon ':' optional_number_after_colon ':' number
 {
@@ -180,12 +176,33 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
   $$->label  = $4;
   $$->reticulation_name = $6;
   $$->reticulation_index = reticulation_cnt;
-  $$->first_parent_length = $8 ? atof($8) : 0;
-  free($8);
-  $$->support = $10 ? atof($10) : 0;
-  free($10);
-  $$->prob = atof($12);
-  free($12);
+  if ($8)
+  {
+    $$->first_parent_length = atof($8);
+    free($8);
+  }
+  else
+  {
+    $$->first_parent_length = 0;
+  }
+  if ($10)
+  {
+    $$->support = atof($10);
+    free($10);
+  }
+  else
+  {
+    $$->support = 0;
+  }
+  if ($12)
+  {
+    $$->first_parent_prob = atof($12);
+    free($12);
+  }
+  else
+  {
+    $$->first_parent_prob = 0.5;
+  }
   $$->idx = 0;
 
   $$->child->parent  = $$;
@@ -208,7 +225,6 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
   $$->reticulation_index = reticulation_cnt;
   $$->length = 0;
   $$->support = 0;
-  $$->prob = 0;
   $$->idx = 0;
 
   $$->child->parent  = $$;
@@ -237,10 +253,10 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
         $$->support = 0;
       }
       if ($9) {
-        $$->prob = atof($9);
+        $$->second_parent_prob = atof($9);
         free($9); 
       } else {
-        $$->prob = 0.5;
+        $$->second_parent_prob = 1.0 - $$->first_parent_prob;
       }
       break;
     }
@@ -261,6 +277,7 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
         $$->second_parent_length = 0;
       }
       $$->support = 0;
+      $$->second_parent_prob = 1.0 - $$->first_parent_prob;
       break;
     }
   }
@@ -269,6 +286,7 @@ subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
 {
   $$ = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
   $$->is_reticulation = 0;
+  $$->reticulation_index = -1;
   $$->label  = $1;
   $$->length = $2 ? atof($2) : 0;
   $$->left   = NULL;
@@ -390,12 +408,12 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_parse_newick_string(const char * s)
   {
     //initialize clv and scaler indices */
     //pll_rnetwork_reset_template_indices(root, tip_cnt);
-
     network = pll_rnetwork_wrapnetwork(root);
   }
   else
+  {
     free(root);
-    
+  }  
   /* free the counters */
   free(reticulation_node_pointers);
 

@@ -34,7 +34,7 @@ static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
 				size_alloced = strlen(newick);
 			} else {
 				size_alloced = asprintf(&newick, "%s#%s:%f:%f:%f", root->label ? root->label : "", root->reticulation_name, root->support,
-						root->second_parent_length, 1.0 - root->prob);
+						root->second_parent_length, root->second_parent_prob);
 			}
 		} else { // the full subtree action
 			char * subtree = rnetwork_export_newick_recursive(root->child, root, cb_serialize);
@@ -47,7 +47,7 @@ static char * rnetwork_export_newick_recursive(const pll_rnetwork_node_t * root,
 				free(temp);
 			} else {
 				size_alloced = asprintf(&newick, "(%s)%s#%s:%f:%f:%f", subtree, root->label ? root->label : "", root->reticulation_name,
-						root->support, root->first_parent_length, root->prob);
+						root->support, root->first_parent_length, root->first_parent_prob);
 			}
 			free(subtree);
 		}
@@ -155,9 +155,9 @@ PLL_EXPORT double pll_rnetwork_reticulation_logprob(pll_rnetwork_t * network, ui
 	for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i) {
 		if (network->nodes[i]->is_reticulation) {
 			if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number)) {
-				res += log(network->nodes[i]->prob);
+				res += log(network->nodes[i]->first_parent_prob);
 			} else {
-				res += log(1.0 - network->nodes[i]->prob);
+				res += log(1.0 - network->nodes[i]->second_parent_prob);
 			}
 		}
 	}
@@ -173,9 +173,9 @@ PLL_EXPORT double pll_rnetwork_reticulation_prob(pll_rnetwork_t * network, uint6
 	for (i = 0; i < network->tip_count + network->inner_tree_count + network->reticulation_count; ++i) {
 		if (network->nodes[i]->is_reticulation) {
 			if (pll_rnetwork_can_go_tree(network->nodes[i]->first_parent, network->nodes[i], tree_number)) {
-				res *= network->nodes[i]->prob;
+				res *= network->nodes[i]->first_parent_prob;
 			} else {
-				res *= 1.0 - network->nodes[i]->prob;
+				res *= network->nodes[i]->second_parent_prob;
 			}
 		}
 	}
