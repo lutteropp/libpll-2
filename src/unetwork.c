@@ -208,10 +208,10 @@ PLL_EXPORT int pll_unetwork_set_reticulation_parents(pll_unetwork_t * network, u
   unsigned int i;
   for (i = 0; i < network->reticulation_count; ++i) {
     int take_first_parent = (tree_number >> network->reticulation_nodes[i]->reticulation_index) & 1;
-    pll_unetwork_node_t * snode = network->reticulation_nodes[i]->next;
+    pll_unetwork_node_t * snode = network->reticulation_nodes[i];
     pll_unetwork_node_t * first_incoming = NULL;
     pll_unetwork_node_t * second_incoming = NULL;
-    while (snode && snode != network->reticulation_nodes[i]) {
+    do {
       if (snode->incoming) {
     	if (!first_incoming) {
     	  first_incoming = snode;
@@ -220,7 +220,7 @@ PLL_EXPORT int pll_unetwork_set_reticulation_parents(pll_unetwork_t * network, u
     	}
       }
       snode = snode->next;
-    }
+    } while (snode && snode != network->reticulation_nodes[i]);
     assert(first_incoming && second_incoming);
     if (take_first_parent) {
       first_incoming->active = 1;
@@ -544,7 +544,12 @@ PLL_EXPORT int pll_unetwork_check_tree_integrity(const pll_unetwork_t * network)
 /* TODO: Memory allocation checks were not implemented in this function!!! */
 static pll_unetwork_node_t * clone_node(const pll_unetwork_node_t * node)
 {
-	pll_unetwork_node_t * new_node = (pll_unetwork_node_t *)malloc(sizeof(pll_unetwork_node_t));
+  pll_unetwork_node_t * new_node = (pll_unetwork_node_t *)malloc(sizeof(pll_unetwork_node_t));
+  if (!new_node) {
+	  pll_errno = PLL_ERROR_MEM_ALLOC;
+	  snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+	  return NULL;
+  }
   memcpy(new_node, node, sizeof(pll_unetwork_node_t));
 
   if (node->label)
@@ -579,37 +584,70 @@ static pll_unetwork_node_t * clone_node(const pll_unetwork_node_t * node)
   return new_node;
 }
 
-static void unetwork_recurse_clone(pll_unetwork_node_t * new_root, const pll_unetwork_node_t * root)
+static void unetwork_recurse_clone(pll_unetwork_node_t * new_root, const pll_unetwork_node_t * root, pll_unetwork_node_t ** reticulation_node_mappings) // TODO: This doesn't work for networks
 {
   const pll_unetwork_node_t * node = root->back;
   if (node)
   {
-    new_root->back = clone_node(node);
-    new_root->back->back = new_root;
+	if (node_is_reticulation(node)) {
+		if (reticulation_node_mappings[node->reticulation_index]) {
+			// TODO: We already encountered this reticulation node...
+			if (root->incoming) { // we have an edge entering the reticulation node
 
-    if (node->next)
-    {
-      pll_unetwork_node_t * snode = node->next;
-      pll_unetwork_node_t * new_snode = new_root->back->next;
-      do
-      {
-        unetwork_recurse_clone(new_snode, snode);
-        snode = snode->next;
-        new_snode = new_snode->next;
-      }
-      while (snode && snode != node);
-    }
+			} else { // the edge is leaving the reticulation node
+				// do nothing, I guess. Because this one should already have been encountered before.
+			}
+		} else {
+			new_root->back = clone_node(node);
+			new_root->back->back = new_root;
+
+			reticulation_node_mappings[node->reticulation_index] = new_root->back;
+
+			if (node->next)
+			{
+			  pll_unetwork_node_t * snode = node->next;
+			  pll_unetwork_node_t * new_snode = new_root->back->next;
+			  do
+			  {
+				unetwork_recurse_clone(new_snode, snode, reticulation_node_mappings);
+				snode = snode->next;
+				new_snode = new_snode->next;
+			  }
+			  while (snode && snode != node);
+			}
+		}
+	}
+	else
+	{
+		new_root->back = clone_node(node);
+		new_root->back->back = new_root;
+
+		if (node->next)
+		{
+		  pll_unetwork_node_t * snode = node->next;
+		  pll_unetwork_node_t * new_snode = new_root->back->next;
+		  do
+		  {
+			unetwork_recurse_clone(new_snode, snode, reticulation_node_mappings);
+			snode = snode->next;
+			new_snode = new_snode->next;
+		  }
+		  while (snode && snode != node);
+		}
+	  }
   }
 }
 
-PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root) {
+PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root) { // TODO: This doesn't work for networks
   pll_unetwork_node_t * new_root = clone_node(root);
+
+  pll_unetwork_node_t ** reticulation_node_mappings = (pll_unetwork_node_t **) calloc(MAX_RETICULATION_COUNT, sizeof(pll_unetwork_node_t *));
 
   const pll_unetwork_node_t * snode = root;
   pll_unetwork_node_t * new_snode = new_root;
   do
   {
-    unetwork_recurse_clone(new_snode, snode);
+    unetwork_recurse_clone(new_snode, snode, reticulation_node_mappings);
 	snode = snode->next;
 	new_snode = new_snode->next;
   }
@@ -622,12 +660,92 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
    /* choose the last inner node as the starting point of the clone. It does not
 	 really matter which node to choose, but since the newick parser places the
 	 root node at the end of the list, we use the same notation here */
-  pll_unetwork_node_t * root = pll_unetwork_graph_clone(network->vroot);
+
+  pll_unetwork_t * cloned_network = (pll_unetwork_t *) malloc(sizeof(pll_unetwork_t));
+  cloned_network->binary = network->binary;
+  cloned_network->edge_count = network->edge_count;
+  cloned_network->inner_tree_count = network->inner_tree_count;
+  cloned_network->reticulation_count = network->reticulation_count;
+  cloned_network->tip_count = network->tip_count;
+  cloned_network->tree_edge_count = network->tree_edge_count;
+  unsigned int total_node_count = network->inner_tree_count + network->reticulation_count + network->tip_count;
+  cloned_network->nodes = (pll_unetwork_node_t **) malloc(total_node_count * sizeof(pll_unetwork_node_t *));
+  cloned_network->reticulation_nodes = (pll_unetwork_node_t **) malloc(network->reticulation_count * sizeof(pll_unetwork_node_t *));
+
+  unsigned int total_mini_nodes_count = network->tip_count + 3 * (network->reticulation_count + network->inner_tree_count);
+  pll_unetwork_node_t ** orig_node_mappings = (pll_unetwork_node_t **) malloc(total_mini_nodes_count * sizeof(pll_unetwork_t *));
+  pll_unetwork_node_t ** cloned_node_mappings = (pll_unetwork_node_t **) malloc(total_mini_nodes_count * sizeof(pll_unetwork_t *));
+  unsigned int i;
+  for (i = 0; i < total_node_count; ++i) {
+	  // copy each node, as well as its next ones
+	  pll_unetwork_node_t * node = network->nodes[i];
+
+	  // first, the "original" node
+	  pll_unetwork_node_t * new_node = (pll_unetwork_node_t *) malloc(sizeof(pll_unetwork_node_t));
+	  if (!new_node) {
+		pll_errno = PLL_ERROR_MEM_ALLOC;
+		snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+		return NULL;
+	  }
+	  memcpy(new_node, node, sizeof(pll_unetwork_node_t));
+
+	  if (node->label)
+	  {
+		new_node->label = (char *)malloc(strlen(node->label)+1);
+		strcpy(new_node->label,node->label);
+	  }
+	  if (node->reticulation_name)
+	  {
+		new_node->reticulation_name = (char *)malloc(strlen(node->reticulation_name)+1);
+		strcpy(new_node->reticulation_name, node->reticulation_name);
+	  }
+	  orig_node_mappings[node->node_index] = node;
+	  cloned_node_mappings[node->node_index] = new_node;
+
+	  // now, the other links
+	  pll_unetwork_node_t * snode = node->next;
+	  while (snode && snode != node) {
+          pll_unetwork_node_t * new_snode = (pll_unetwork_node_t *) malloc(sizeof(pll_unetwork_node_t));
+          if (!new_snode) {
+		    pll_errno = PLL_ERROR_MEM_ALLOC;
+		    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+		    return NULL;
+		  }
+		  memcpy(new_snode, snode, sizeof(pll_unetwork_node_t));
+          snode->label = node->label;
+          snode->reticulation_name = node->reticulation_name;
+          orig_node_mappings[snode->node_index] = snode;
+          cloned_node_mappings[snode->node_index] = new_snode;
+
+		  snode = snode->next;
+	  }
+  }
+  // now, deal with the connections
+  for (i = 0; i < total_mini_nodes_count; ++i) {
+	  printf("i: %d\n", i);
+	  assert(cloned_node_mappings[i]);
+	  assert(orig_node_mappings[i]);
+	  cloned_node_mappings[i]->back = cloned_node_mappings[orig_node_mappings[i]->back->node_index];
+	  if (orig_node_mappings[i]->next) { // non-leaf node
+	    cloned_node_mappings[i]->next = cloned_node_mappings[orig_node_mappings[i]->next->node_index];
+	  }
+  }
+  // now, deal with the reticulations
+  for (i = 0; i < network->reticulation_count; ++i) {
+	  cloned_network->reticulation_nodes[i] = cloned_node_mappings[network->reticulation_nodes[i]->node_index];
+  }
+  // now, deal with the root
+  cloned_network->vroot = cloned_node_mappings[network->vroot->node_index];
+  free(cloned_node_mappings);
+  free(orig_node_mappings);
+
+ /* pll_unetwork_node_t * root = pll_unetwork_graph_clone(network->vroot);
 
   if (network->binary)
 	return pll_unetwork_wrapnetwork(root, network->tip_count);
   else
-	return pll_unetwork_wrapnetwork_multi(root, network->tip_count, network->inner_tree_count, network->reticulation_count);
+	return pll_unetwork_wrapnetwork_multi(root, network->tip_count, network->inner_tree_count, network->reticulation_count);*/
+  return cloned_network;
 }
 
 static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_unetwork_node_t * back, pll_unetwork_node_t** reticulation_nodes)
@@ -646,7 +764,6 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->reticulation_name = NULL;
 	  uroot->reticulation_index = -1;
 	  uroot->clv_index = root->clv_index;
-	  uroot->node_index = root->idx;
 	  uroot->scaler_index = root->scaler_index;
 	  uroot->pmatrix_index = root->pmatrix_index;
 	  uroot->length = uroot->back->length;
@@ -695,7 +812,6 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->next->reticulation_index = uroot->reticulation_index;
 	  uroot->next->reticulation_name = uroot->reticulation_name;
 	  uroot->next->clv_index = uroot->clv_index;
-	  uroot->next->node_index = uroot->node_index;
 	  uroot->next->scaler_index = uroot->scaler_index;
 	  uroot->next->pmatrix_index = uroot->pmatrix_index;
 	  uroot->next->active = 1;
@@ -720,7 +836,6 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->next->next->reticulation_index = uroot->reticulation_index;
 	  uroot->next->next->reticulation_name = uroot->reticulation_name;
 	  uroot->next->next->clv_index = uroot->clv_index;
-	  uroot->next->next->node_index = uroot->node_index;
 	  uroot->next->next->scaler_index = uroot->scaler_index;
 	  uroot->next->next->pmatrix_index = uroot->pmatrix_index;
 
@@ -808,7 +923,6 @@ static pll_unetwork_node_t * rnetwork_unroot(pll_rnetwork_node_t * root, pll_une
 	  uroot->next->next->reticulation_name = uroot->reticulation_name;
 	  uroot->next->next->reticulation_index = uroot->reticulation_index;
 	  uroot->next->next->clv_index = uroot->clv_index;
-	  uroot->next->next->node_index = uroot->node_index;
 	  uroot->next->next->scaler_index = uroot->scaler_index;
 	  uroot->next->next->pmatrix_index = uroot->pmatrix_index;
 	} else {
@@ -903,7 +1017,6 @@ PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network) {
   uroot->back->incoming = 1;
   uroot->reticulation_index = -1;
   uroot->clv_index = root->clv_index;
-  uroot->node_index = root->idx;
   uroot->scaler_index = root->scaler_index;
   uroot->pmatrix_index = root->pmatrix_index;
 

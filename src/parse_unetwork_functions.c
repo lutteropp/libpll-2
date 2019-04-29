@@ -136,7 +136,7 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
     do
     {
-      if (snode->active) {
+      if (snode->active && snode->incoming) {
         recursive_assign_indices(snode->back,
                                  tip_clv_index,
                                  inner_clv_index,
@@ -231,6 +231,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
   }
   assert(index < array_size);
   array[index] = node;
+  node->node_index = index;
 }
 
 static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
@@ -464,6 +465,7 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick_string(const char * s)
 {
   pll_rnetwork_t * rnetwork = pll_rnetwork_parse_newick_string(s);
   pll_unetwork_t * unetwork = pll_rnetwork_unroot(rnetwork);
+  unetwork->binary = rnetwork->binary;
   pll_rnetwork_destroy(rnetwork, NULL);
   pll_unetwork_set_reticulation_parents(unetwork, 0);
   /* initialize clv and scaler indices */
