@@ -313,6 +313,21 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   return count;
 }
 
+static void fill_link_indices(pll_unetwork_t * network) {
+	unsigned int nodes_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
+	network->max_link_index = 0;
+	unsigned int i;
+	for (i = 0; i < nodes_count; ++i) {
+		pll_unetwork_node_t * node = network->nodes[i];
+		pll_unetwork_node_t * snode = node->next;
+		while (snode && snode != node) {
+			snode->link_index = network->max_link_index;
+			network->max_link_index++;
+			snode = snode->next;
+		}
+	}
+}
+
 static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
                                     unsigned int tip_count,
                                     unsigned int inner_tree_count,
@@ -410,6 +425,8 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->tree_edge_count = network->inner_tree_count * 2;
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
+
+  fill_link_indices(network);
 
   return network;
 }

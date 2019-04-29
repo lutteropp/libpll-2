@@ -699,8 +699,9 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 		new_node->reticulation_name = (char *)malloc(strlen(node->reticulation_name)+1);
 		strcpy(new_node->reticulation_name, node->reticulation_name);
 	  }
-	  orig_node_mappings[node->node_index] = node;
-	  cloned_node_mappings[node->node_index] = new_node;
+
+	  orig_node_mappings[node->link_index] = node;
+	  cloned_node_mappings[node->link_index] = new_node;
 
 	  // now, the other links
 	  pll_unetwork_node_t * snode = node->next;
@@ -714,8 +715,8 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 		  memcpy(new_snode, snode, sizeof(pll_unetwork_node_t));
           snode->label = node->label;
           snode->reticulation_name = node->reticulation_name;
-          orig_node_mappings[snode->node_index] = snode;
-          cloned_node_mappings[snode->node_index] = new_snode;
+          orig_node_mappings[snode->link_index] = snode;
+          cloned_node_mappings[snode->link_index] = new_snode;
 
 		  snode = snode->next;
 	  }
@@ -725,17 +726,17 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 	  printf("i: %d\n", i);
 	  assert(cloned_node_mappings[i]);
 	  assert(orig_node_mappings[i]);
-	  cloned_node_mappings[i]->back = cloned_node_mappings[orig_node_mappings[i]->back->node_index];
+	  cloned_node_mappings[i]->back = cloned_node_mappings[orig_node_mappings[i]->back->link_index];
 	  if (orig_node_mappings[i]->next) { // non-leaf node
-	    cloned_node_mappings[i]->next = cloned_node_mappings[orig_node_mappings[i]->next->node_index];
+	    cloned_node_mappings[i]->next = cloned_node_mappings[orig_node_mappings[i]->next->link_index];
 	  }
   }
   // now, deal with the reticulations
   for (i = 0; i < network->reticulation_count; ++i) {
-	  cloned_network->reticulation_nodes[i] = cloned_node_mappings[network->reticulation_nodes[i]->node_index];
+	  cloned_network->reticulation_nodes[i] = cloned_node_mappings[network->reticulation_nodes[i]->link_index];
   }
   // now, deal with the root
-  cloned_network->vroot = cloned_node_mappings[network->vroot->node_index];
+  cloned_network->vroot = cloned_node_mappings[network->vroot->link_index];
   free(cloned_node_mappings);
   free(orig_node_mappings);
 

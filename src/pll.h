@@ -500,6 +500,8 @@ typedef struct pll_unetwork_node_s
   char* label;
   char* reticulation_name;
 
+  unsigned int link_index; // unique index for just this link node
+
   void * data;
 } pll_unetwork_node_t;
 
@@ -512,6 +514,7 @@ typedef struct pll_unetwork_s
   unsigned int edge_count;
   unsigned int tree_edge_count;
   int binary;
+  unsigned int max_link_index; // index of the highest link + 1
 
   pll_unetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
   pll_unetwork_node_t ** reticulation_nodes; // pointers to all reticulation nodes in the network
