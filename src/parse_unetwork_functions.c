@@ -136,7 +136,7 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
     do
     {
-      if (snode->active && snode->incoming) {
+      if (snode->active /*&& snode->incoming*/) { // TODO: seems that the snode->incoming one destroys it...
         recursive_assign_indices(snode->back,
                                  tip_clv_index,
                                  inner_clv_index,
@@ -416,7 +416,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->tip_count = tip_count;
   network->inner_tree_count = inner_tree_count;
   network->reticulation_count = reticulation_count;
-  network->edge_count = network->tip_count + network->inner_tree_count + network->reticulation_count - 1;
+  network->edge_count = network->tip_count + network->inner_tree_count - 1 + 2 * network->reticulation_count;
   network->tree_edge_count = network->tip_count + network->inner_tree_count - 1; //network->inner_tree_count * 2 + 1; //?
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
