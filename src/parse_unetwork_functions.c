@@ -197,7 +197,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
                                          unsigned int * tip_index,
                                          unsigned int * inner_index,
                                          unsigned int level,
-	                                     int* visited_reticulations)
+	                                     int* visited_reticulations) // TODO: Is this correct?
 {
   unsigned int index;
   if (!node->next) // we have a tip node
@@ -302,30 +302,25 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   count = unetwork_count_nodes_recursive(root, tip_count, inner_tree_count, reticulation_count, 0, visited_reticulations);
   free(visited_reticulations);
 
-  printf("count: %d\n", count);
-   printf("tip count: %d\n", *tip_count);
-   printf("inner tree count: %d\n", *inner_tree_count);
-   printf("reticulation count: %d\n", *reticulation_count);
-
   if (tip_count && inner_tree_count && reticulation_count)
     assert(count == *tip_count + *inner_tree_count + *reticulation_count);
 
   return count;
 }
 
-static void fill_link_indices(pll_unetwork_t * network) {
-	unsigned int nodes_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
-	network->max_link_index = 0;
-	unsigned int i;
-	for (i = 0; i < nodes_count; ++i) {
-		pll_unetwork_node_t * node = network->nodes[i];
-		pll_unetwork_node_t * snode = node->next;
-		while (snode && snode != node) {
-			snode->link_index = network->max_link_index;
-			network->max_link_index++;
-			snode = snode->next;
-		}
+static void fill_link_indices_recursive(pll_unetwork_t * network, pll_unetwork_node_t * node) {
+	if (!node || node->link_index > 0) {
+		return;
 	}
+	node->link_index = network->max_link_index;
+	network->max_link_index++;
+	fill_link_indices_recursive(network, node->next);
+	fill_link_indices_recursive(network, node->back);
+}
+
+static void fill_link_indices(pll_unetwork_t * network) {
+	network->max_link_index = 0;
+	fill_link_indices_recursive(network, network->vroot);
 }
 
 static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
@@ -481,6 +476,7 @@ pll_unetwork_node_t * pll_unetwork_unroot_inplace(pll_unetwork_node_t * root)
 PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick_string(const char * s)
 {
   pll_rnetwork_t * rnetwork = pll_rnetwork_parse_newick_string(s);
+  assert(rnetwork);
   pll_unetwork_t * unetwork = pll_rnetwork_unroot(rnetwork);
   unetwork->binary = rnetwork->binary;
   pll_rnetwork_destroy(rnetwork, NULL);

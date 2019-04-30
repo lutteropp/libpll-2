@@ -117,7 +117,76 @@ input: '(' subnetwork ',' subnetwork ')' optional_label optional_length ';'
   {
     network->right->parent = network;
   }
-};
+}
+       | '(' subnetwork ',' subnetwork ',' subnetwork ')' optional_label optional_length ';'
+{
+  // unrooted tree/ network -> root it!
+  inner_tree_cnt++;
+  network->is_reticulation = 0;
+  network->reticulation_index = -1;
+  network->parent = NULL;
+  network->label = $8;
+  network->length = $9 ? atof($9) : 0;
+  network->idx = 0;
+  free($9);
+  
+  pll_rnetwork_node_t * intermediary_node = (pll_rnetwork_node_t *)calloc(1, sizeof(pll_rnetwork_node_t));
+  inner_tree_cnt++;
+  intermediary_node->is_reticulation = 0;
+  intermediary_node->reticulation_index = -1;
+  intermediary_node->label = NULL;
+  intermediary_node->length = 0;
+  intermediary_node->idx = 0;
+  
+  intermediary_node->left = $2;
+  intermediary_node->right = $4;
+  if (intermediary_node->left->is_reticulation)
+  {
+    if (!intermediary_node->left->first_parent)
+    {
+      intermediary_node->left->first_parent = intermediary_node;
+    }
+    else
+    {
+      intermediary_node->left->second_parent = intermediary_node;
+    }
+  }
+  else
+  {
+    intermediary_node->left->parent = intermediary_node;
+  }
+  
+  if (intermediary_node->right->is_reticulation)
+  {
+    if (!intermediary_node->right->first_parent)
+    {
+      intermediary_node->right->first_parent = intermediary_node;
+    }
+    else
+    {
+      intermediary_node->right->second_parent = intermediary_node;
+    }
+  }
+  else
+  {
+    intermediary_node->right->parent = intermediary_node;
+  }
+  
+  network->left = intermediary_node;
+  network->right = $6;
+  if (network->right->is_reticulation)
+  {
+    if (!network->right->first_parent)
+    {
+      network->right->first_parent = network;
+    }
+    else
+    {
+      network->right->second_parent = network;
+    }
+  }
+}
+;
 
 subnetwork: '(' subnetwork ',' subnetwork ')' optional_label optional_length
 {

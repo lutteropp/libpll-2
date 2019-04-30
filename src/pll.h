@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -514,7 +515,7 @@ typedef struct pll_unetwork_s
   unsigned int edge_count;
   unsigned int tree_edge_count;
   int binary;
-  unsigned int max_link_index; // index of the highest link + 1
+  unsigned int max_link_index; // index of the highest link, link indices starting from 1
 
   pll_unetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
   pll_unetwork_node_t ** reticulation_nodes; // pointers to all reticulation nodes in the network
