@@ -416,7 +416,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->tip_count = tip_count;
   network->inner_tree_count = inner_tree_count;
   network->reticulation_count = reticulation_count;
-  network->edge_count = network->inner_tree_count * 2 + network->reticulation_count;
+  network->edge_count = network->tip_count + network->inner_tree_count + network->reticulation_count - 1;
   network->tree_edge_count = network->inner_tree_count * 2;
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
