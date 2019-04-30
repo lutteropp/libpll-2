@@ -713,8 +713,8 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 		    return NULL;
 		  }
 		  memcpy(new_snode, snode, sizeof(pll_unetwork_node_t));
-          snode->label = node->label;
-          snode->reticulation_name = node->reticulation_name;
+		  new_snode->label = new_node->label;
+		  new_snode->reticulation_name = new_node->reticulation_name;
           orig_node_mappings[snode->link_index] = snode;
           cloned_node_mappings[snode->link_index] = new_snode;
 
