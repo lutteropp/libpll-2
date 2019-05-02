@@ -1202,11 +1202,8 @@ PLL_EXPORT pll_rnetwork_t * pll_rnetwork_clone(const pll_rnetwork_t * root);
 
 /* functions in unetwork.c */
 
-PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_node_t * root,
+PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_t * network,
                                    char * (*cb_serialize)(const pll_unetwork_node_t *));
-
-PLL_EXPORT char * pll_unetwork_export_newick_rooted(const pll_unetwork_node_t * root,
-                                                 double root_brlen);
 
 PLL_EXPORT int pll_unetwork_set_reticulation_parents(pll_unetwork_t * network, uint64_t tree_number);
 

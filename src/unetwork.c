@@ -110,14 +110,225 @@ PLL_EXPORT int node_is_root(const pll_unetwork_node_t * node) {
 	return (cnt_in == 0);
 }
 
-PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_node_t * root,
-                                   char * (*cb_serialize)(const pll_unetwork_node_t *)) {
-	return PLL_FAILURE;
+static char * newick_unetwork_recurse(const pll_unetwork_node_t * root,
+                                    char * (*cb_serialize)(const pll_unetwork_node_t *),
+                                    int level, int * visited_reticulations)
+{
+  char * newick;
+  int size_alloced = 0;
+  assert(root != NULL);
+
+  if (node_is_reticulation(root) && visited_reticulations[root->reticulation_index]) { // we already encountered this node, act like if it is a dead end.
+	if (cb_serialize)
+	{
+	  // TODO: does this work?
+	  newick = cb_serialize(root);
+	  size_alloced = strlen(newick);
+	}
+	else
+	{
+	  if (root->reticulation_name)
+	  {
+	    size_alloced = asprintf(&newick, "%s#%s:%f:%f:%f", root->label ? root->label : "", root->reticulation_name, root->length, root->support, root->prob);
+	  }
+	  else
+	  {
+		size_alloced = asprintf(&newick, "%s#%d:%f:%f:%f", root->label ? root->label : "", root->reticulation_index, root->length, root->support, root->prob);
+	  }
+	}
+  }
+  else if (!root->next) // leaf node
+  {
+    if (cb_serialize)
+    {
+      newick = cb_serialize(root);
+      size_alloced = strlen(newick);
+    }
+    else
+    {
+      size_alloced = asprintf(&newick, "%s:%f", root->label, root->length);
+    }
+  }
+  else // inner node
+  {
+    const pll_unetwork_node_t * start = root->next;
+    const pll_unetwork_node_t * snode = start;
+    char * cur_newick;
+    do
+    {
+      if (!snode->incoming) {
+        char * subnetwork = newick_unetwork_recurse(snode->back, cb_serialize, level+1, visited_reticulations);
+        if (subnetwork == NULL)
+        {
+          pll_errno = PLL_ERROR_MEM_ALLOC;
+          snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+          return NULL;
+        }
+
+        if (snode == start)
+        {
+          cur_newick = subnetwork;
+        }
+        else
+        {
+          char * temp = cur_newick;
+          size_alloced = asprintf(&cur_newick,
+                                  "%s,%s",
+                                  temp,
+                                  subnetwork);
+          free(temp);
+          free(subnetwork);
+        }
+      }
+      snode = snode->next;
+    }
+    while(snode != root);
+
+    if (level > 0)
+    {
+      if (node_is_reticulation(root))
+      {
+    	if (cb_serialize)
+		{
+		  char * temp = cb_serialize(root);
+		  size_alloced = asprintf(&newick,
+		  						"(%s)%s",
+		  						cur_newick,
+		  						temp);
+		  free(temp);
+		}
+		else
+		{
+		  if (root->reticulation_name)
+		  {
+		    size_alloced = asprintf(&newick,
+			  					  "(%s)%s#%s:%f:%f:%f",
+				  				  cur_newick,
+					  			  root->label ? root->label : "",
+						  		  root->reticulation_name,
+							  	  root->length,
+								  root->support,
+								  root->prob);
+		  }
+		  else
+		  {
+		    size_alloced = asprintf(&newick,
+								  "(%s)%s#%d:%f:%f:%f",
+								  cur_newick,
+								  root->label ? root->label : "",
+								  root->reticulation_index,
+								  root->length,
+								  root->support,
+					              root->prob);
+		  }
+		}
+		free(cur_newick);
+        visited_reticulations[root->reticulation_index] = 1;
+      }
+      else
+      {
+        if (cb_serialize)
+        {
+          char * temp = cb_serialize(root);
+          size_alloced = asprintf(&newick,
+                                  "(%s)%s",
+                                  cur_newick,
+                                  temp);
+          free(temp);
+        }
+        else
+        {
+          size_alloced = asprintf(&newick,
+                                  "(%s)%s:%f",
+                                  cur_newick,
+                                  root->label ? root->label : "",
+                                  root->length);
+        }
+        free(cur_newick);
+      }
+    }
+    else
+      newick = cur_newick;
+  }
+
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    return NULL;
+  }
+
+  return newick;
 }
 
-PLL_EXPORT char * pll_unetwork_export_newick_rooted(const pll_unetwork_node_t * root,
-                                                 double root_brlen) {
-	return PLL_FAILURE;
+char * unetwork_export_newick(const pll_unetwork_t * network,
+                           int export_rooted,
+                           double root_brlen,
+                           char * (*cb_serialize)(const pll_unetwork_node_t *))
+{
+  char * newick;
+  char * subtree1;
+  char * subtree2;
+  int size_alloced;
+
+  pll_unetwork_node_t * root = network->vroot;
+
+  if (!root) return NULL;
+
+  int* visited_reticulations = (int*) calloc(network->reticulation_count, sizeof(int));
+
+  if (!root->next) root = root->back;
+
+  if (export_rooted)
+  {
+    assert(!cb_serialize);
+
+    subtree1 = newick_unetwork_recurse(root->back, cb_serialize, 1, visited_reticulations);
+    subtree2 = newick_unetwork_recurse(root, cb_serialize, 0, visited_reticulations);
+
+    size_alloced = asprintf(&newick,
+                            "(%s,(%s)%s:%f):0.0;",
+                            subtree1,
+                            subtree2,
+                            root->label ? root->label : "",
+                            root_brlen);
+  }
+  else
+  {
+    subtree1 = newick_unetwork_recurse(root->back, cb_serialize, 1, visited_reticulations);
+    subtree2 = newick_unetwork_recurse(root, cb_serialize, 0, visited_reticulations);
+
+    size_alloced = asprintf(&newick,
+                            "(%s,%s)%s:0.0;",
+                            subtree1,
+                            subtree2,
+                            root->label ? root->label : "");
+  }
+
+  free(subtree1);
+  free(subtree2);
+
+  free(visited_reticulations);
+
+  if (size_alloced < 0)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "memory allocation during newick export failed");
+    return NULL;
+  }
+
+//  printf("newick: %s\n", newick);
+
+  return (newick);
+}
+
+PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_t * network,
+                                   char * (*cb_serialize)(const pll_unetwork_node_t *)) {
+	if (network->reticulation_count == 0) {
+	  return unetwork_export_newick(network, 0, 0, cb_serialize);
+	} else {
+	  return unetwork_export_newick(network, 1, 0, cb_serialize);
+	}
 }
 
 static void unetwork_tree_traverse_recursive(pll_unetwork_node_t * node,
