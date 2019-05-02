@@ -1222,7 +1222,7 @@ PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
                                   pll_unetwork_node_t ** outbuffer,
                                   unsigned int * trav_size, uint64_t tree_number);
 
-PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * network,
+PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * root,
                                   int traversal,
                                   int (*cbtrav)(pll_unetwork_node_t *),
                                   pll_unetwork_node_t ** outbuffer,

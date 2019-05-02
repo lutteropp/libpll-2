@@ -331,76 +331,44 @@ PLL_EXPORT char * pll_unetwork_export_newick(const pll_unetwork_t * network,
 	}
 }
 
-static void unetwork_tree_traverse_recursive(pll_unetwork_node_t * node,
-                                     int traversal,
-                                     int (*cbtrav)(pll_unetwork_node_t *),
-                                     unsigned int * index,
-									 pll_unetwork_node_t ** outbuffer)
-{
-  if (!cbtrav(node))
-    return;
-
-  if (traversal == PLL_TREE_TRAVERSE_PREORDER)
-  {
-    outbuffer[*index] = node;
-    *index = *index + 1;
-  }
-
-  if (node->next)
-  {
-	pll_unetwork_node_t * snode = node->next;
-    do
-    {
-      if (snode->active) {
-        unetwork_tree_traverse_recursive(snode->back, traversal, cbtrav, index, outbuffer);
-      }
-      snode = snode->next;
-    }
-    while (snode && snode != node);
-  }
-
-  if (traversal == PLL_TREE_TRAVERSE_POSTORDER)
-  {
-    outbuffer[*index] = node;
-    *index = *index + 1;
-  }
-}
-
 static void unetwork_traverse_recursive(pll_unetwork_node_t * node,
-                                     int traversal,
-                                     int (*cbtrav)(pll_unetwork_node_t *),
-                                     unsigned int * index,
-									 pll_unetwork_node_t ** outbuffer)
+		                                int traversal,
+		                                int (*cbtrav)(pll_unetwork_node_t *),
+		                                unsigned int * index,
+								        pll_unetwork_node_t ** outbuffer,
+	                                    int* visited_reticulations) // TODO: Is this correct?
 {
-  if (!cbtrav(node))
-    return;
+  if (!node || (pll_unetwork_is_reticulation(node) && visited_reticulations[node->reticulation_index]) || !cbtrav(node)) {
+	  return;
+  }
 
-  if (traversal == PLL_NETWORK_TRAVERSE_PREORDER)
-  {
-	if (count_active_outgoing(node) > 1) {
-      outbuffer[*index] = node;
-      *index = *index + 1;
+  // if preorder traversal, first deal with the node.
+  if (traversal == PLL_NETWORK_TRAVERSE_PREORDER) {
+	outbuffer[*index] = node;
+	*index = *index + 1;
+	if (pll_unetwork_is_reticulation(node))
+	{
+	  visited_reticulations[node->reticulation_index] = 1;
 	}
   }
 
-  if (node->next)
+  pll_unetwork_node_t * snode = node;
+  do
   {
-	pll_unetwork_node_t * snode = node->next;
-    do
-    {
-      if (snode->active) {
-        unetwork_traverse_recursive(snode->back, traversal, cbtrav, index, outbuffer);
-      }
-      snode = snode->next;
-    }
-    while (snode && snode != node);
-  }
+	if (!snode->incoming && snode->active) // outgoing edge
+	{
+		unetwork_traverse_recursive(snode->back, traversal, cbtrav, index, outbuffer, visited_reticulations);
+	}
+	snode = snode->next;
+  } while (snode && snode != node);
 
-  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER)
-  {
-	if (count_active_outgoing(node) > 1) {
-      outbuffer[*index] = node;
-      *index = *index + 1;
+  // if postorder traversal, first deal with the children
+  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER) {
+	outbuffer[*index] = node;
+	*index = *index + 1;
+	if (pll_unetwork_is_reticulation(node))
+	{
+	  visited_reticulations[node->reticulation_index] = 1;
 	}
   }
 }
@@ -456,39 +424,19 @@ PLL_EXPORT int pll_unetwork_forget_reticulation_parents(pll_unetwork_t * network
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
+PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * root,
                                   int traversal,
                                   int (*cbtrav)(pll_unetwork_node_t *),
                                   pll_unetwork_node_t ** outbuffer,
-                                  unsigned int * trav_size, uint64_t tree_number) {
-  if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
-			return PLL_FAILURE;
-  pll_unetwork_set_reticulation_parents(network, tree_number);
-
+                                  unsigned int * trav_size) {
   *trav_size = 0;
-  if (!network->vroot->next) return PLL_FAILURE;
 
-  if (traversal == PLL_TREE_TRAVERSE_POSTORDER ||
-	  traversal == PLL_TREE_TRAVERSE_PREORDER)
+  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER ||
+	  traversal == PLL_NETWORK_TRAVERSE_PREORDER)
   {
-
-	/* we will traverse an unrooted network in the following way
-
-				2
-			  /
-		1  --*
-			  \
-				3
-
-	   at each node the callback function is called to decide whether we
-	   are going to traversing the subtree rooted at the specific node */
-
-	if (network->vroot->back->active) {
-	  unetwork_tree_traverse_recursive(network->vroot->back, traversal, cbtrav, trav_size, outbuffer);
-	}
-	if (network->vroot->active) {
-	  unetwork_tree_traverse_recursive(network->vroot, traversal, cbtrav, trav_size, outbuffer);
-	}
+	int* visited_reticulations = (int*) calloc(MAX_RETICULATION_COUNT, sizeof(int));
+	unetwork_traverse_recursive(root, traversal, cbtrav, trav_size, outbuffer, visited_reticulations);
+	free(visited_reticulations);
   }
   else
   {
@@ -500,43 +448,15 @@ PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
   return PLL_SUCCESS;
 }
 
-PLL_EXPORT int pll_unetwork_traverse(pll_unetwork_node_t * network,
+PLL_EXPORT int pll_unetwork_tree_traverse(pll_unetwork_t * network,
                                   int traversal,
                                   int (*cbtrav)(pll_unetwork_node_t *),
                                   pll_unetwork_node_t ** outbuffer,
-                                  unsigned int * trav_size) {
-  *trav_size = 0;
-
-  if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER ||
-	  traversal == PLL_NETWORK_TRAVERSE_PREORDER)
-  {
-
-	/* we will traverse an unrooted network in the following way
-
-				2
-			  /
-		1  --*
-			  \
-				3
-
-	   at each node the callback function is called to decide whether we
-	   are going to traversing the subtree rooted at the specific node */
-
-	if (network->back->active) {
-	  unetwork_traverse_recursive(network->back, traversal, cbtrav, trav_size, outbuffer);
-	}
-	if (network->active) {
-	  unetwork_traverse_recursive(network, traversal, cbtrav, trav_size, outbuffer);
-	}
-  }
-  else
-  {
-	snprintf(pll_errmsg, 200, "Invalid traversal value.");
-	pll_errno = PLL_ERROR_PARAM_INVALID;
-	return PLL_FAILURE;
-  }
-
-  return PLL_SUCCESS;
+                                  unsigned int * trav_size, uint64_t tree_number) {
+  if (tree_number >= ((unsigned int) 2 << network->reticulation_count))
+			return PLL_FAILURE;
+  pll_unetwork_set_reticulation_parents(network, tree_number);
+  return pll_unetwork_traverse(network->vroot, traversal, cbtrav, outbuffer, trav_size);
 }
 
 PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav_buffer,
@@ -573,6 +493,11 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
 
 	if (node->next)
 	{
+	  while (node->incoming)
+	  {
+		node = node->next; // we want the outgoing node
+	  }
+
 	  ops[*ops_count].parent_clv_index = node->clv_index;
 	  ops[*ops_count].parent_scaler_index = node->scaler_index;
 
