@@ -473,7 +473,7 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
   if (matrix_count)
 	*matrix_count = 0;
 
-  for (i = 0; i < trav_buffer_size; ++i)
+  for (i = 0; i < trav_buffer_size - 1; ++i)
   {
 	node = trav_buffer[i];
 
@@ -493,9 +493,9 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
 
 	if (node->next)
 	{
-	  while (node->incoming)
+	  while (!node->incoming)
 	  {
-		node = node->next; // we want the outgoing node
+		node = node->next; // we want the incoming node
 	  }
 
 	  ops[*ops_count].parent_clv_index = node->clv_index;
@@ -512,6 +512,28 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
 	  *ops_count = *ops_count + 1;
 	}
   }
+
+  // special treatment of the root node
+  node = trav_buffer[trav_buffer_size - 1];
+  if (branches)
+    *branches++ = node->length;
+  if (pmatrix_indices)
+    *pmatrix_indices++ = node->pmatrix_index;
+  if (matrix_count)
+    *matrix_count = *matrix_count + 1;
+
+  ops[*ops_count].parent_clv_index = node->clv_index;
+  ops[*ops_count].parent_scaler_index = node->scaler_index;
+
+  ops[*ops_count].child1_clv_index = node->next->next->back->clv_index;
+  ops[*ops_count].child1_scaler_index = node->next->next->back->scaler_index;
+  ops[*ops_count].child1_matrix_index = node->next->next->back->pmatrix_index;
+
+  ops[*ops_count].child2_clv_index = node->back->clv_index;
+  ops[*ops_count].child2_scaler_index = node->back->scaler_index;
+  ops[*ops_count].child2_matrix_index = node->back->pmatrix_index;
+
+  *ops_count = *ops_count + 1;
 }
 
 /* a callback function for checking network tree integrity */

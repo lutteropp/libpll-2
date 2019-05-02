@@ -235,17 +235,14 @@ static void pll_unetwork_unset_indices(pll_unetwork_t * network) {
 	unsigned int node_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
 	unsigned int i;
 	for (i = 0; i < node_count; ++i) {
-		network->nodes[i]->clv_index = 0;
-		network->nodes[i]->node_index = 0;
-		network->nodes[i]->scaler_index = 0;
-		pll_unetwork_node_t * snode = network->nodes[i]->next;
-		while (snode && snode != network->nodes[i]) {
+		pll_unetwork_node_t * snode = network->nodes[i];
+		do {
 			snode->clv_index = 0;
 			snode->node_index = 0;
 			snode->scaler_index = 0;
 			snode->pmatrix_index = 0;
 			snode = snode->next;
-		}
+		} while (snode && snode != network->nodes[i]);
 	}
 }
 
@@ -264,15 +261,13 @@ PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network) {
 	unsigned int pmatrix_idx = network->tip_count;
 
 	for (i = network->tip_count; i < node_count; ++i) {
-		network->nodes[i]->clv_index = clv_idx;
-		network->nodes[i]->node_index = node_idx++;
-		network->nodes[i]->scaler_index = network->nodes[i]->clv_index - network->tip_count;
-		pll_unetwork_node_t * snode = network->nodes[i]->next;
-		while (snode != network->nodes[i]) {
+		pll_unetwork_node_t * snode = network->nodes[i];
+		do {
 			snode->clv_index = clv_idx;
 			snode->node_index = node_idx++;
 			snode->scaler_index = snode->clv_index - network->tip_count;
-			if (snode->back != network->nodes[0] && snode->back->pmatrix_index == 0) {
+			if (snode->back == network->nodes[0]) {
+			} else if (snode->back->pmatrix_index == 0) {
 				snode->pmatrix_index = pmatrix_idx;
 				snode->back->pmatrix_index = pmatrix_idx++;
 				assert(snode->pmatrix_index == snode->back->pmatrix_index);
@@ -280,8 +275,17 @@ PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network) {
 				snode->pmatrix_index = snode->back->pmatrix_index;
 			}
 			snode = snode->next;
-		}
+		} while (snode && snode != network->nodes[i]);
 		++clv_idx;
+	}
+
+	assert(network->vroot->back == network->nodes[0] || network->vroot->pmatrix_index != 0);
+	for (i = 0; i < node_count; ++i) {
+		assert(network->nodes[i]->pmatrix_index == network->nodes[i]->back->pmatrix_index);
+		if (i < network->tip_count) {
+			assert(network->nodes[i]->pmatrix_index == network->nodes[i]->clv_index);
+			assert(network->nodes[i]->back->pmatrix_index == network->nodes[i]->clv_index);
+		}
 	}
 }
 
