@@ -672,7 +672,7 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
   cloned_network->nodes = (pll_unetwork_node_t **) malloc(total_node_count * sizeof(pll_unetwork_node_t *));
   cloned_network->reticulation_nodes = (pll_unetwork_node_t **) malloc(network->reticulation_count * sizeof(pll_unetwork_node_t *));
 
-  unsigned int total_mini_nodes_count = 1 + network->tip_count + 3 * (network->reticulation_count + network->inner_tree_count);
+  unsigned int total_mini_nodes_count = network->tip_count + 3 * (network->reticulation_count + network->inner_tree_count);
   pll_unetwork_node_t ** orig_node_mappings = (pll_unetwork_node_t **) malloc(total_mini_nodes_count * sizeof(pll_unetwork_t *));
   pll_unetwork_node_t ** cloned_node_mappings = (pll_unetwork_node_t **) malloc(total_mini_nodes_count * sizeof(pll_unetwork_t *));
   unsigned int i;
@@ -700,8 +700,8 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 		strcpy(new_node->reticulation_name, node->reticulation_name);
 	  }
 
-	  orig_node_mappings[node->link_index] = node;
-	  cloned_node_mappings[node->link_index] = new_node;
+	  orig_node_mappings[node->node_index] = node;
+	  cloned_node_mappings[node->node_index] = new_node;
 
 	  // now, the other links
 	  pll_unetwork_node_t * snode = node->next;
@@ -715,31 +715,31 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * network) {
 		  memcpy(new_snode, snode, sizeof(pll_unetwork_node_t));
 		  new_snode->label = new_node->label;
 		  new_snode->reticulation_name = new_node->reticulation_name;
-          orig_node_mappings[snode->link_index] = snode;
-          cloned_node_mappings[snode->link_index] = new_snode;
+          orig_node_mappings[snode->node_index] = snode;
+          cloned_node_mappings[snode->node_index] = new_snode;
 
 		  snode = snode->next;
 	  }
   }
   // now, deal with the connections
-  for (i = 1; i < total_mini_nodes_count; ++i) {
+  for (i = 0; i < total_mini_nodes_count; ++i) {
 	  assert(cloned_node_mappings[i]);
 	  assert(orig_node_mappings[i]);
-	  cloned_node_mappings[i]->back = cloned_node_mappings[orig_node_mappings[i]->back->link_index];
+	  cloned_node_mappings[i]->back = cloned_node_mappings[orig_node_mappings[i]->back->node_index];
 	  if (orig_node_mappings[i]->next) { // non-leaf node
-	    cloned_node_mappings[i]->next = cloned_node_mappings[orig_node_mappings[i]->next->link_index];
+	    cloned_node_mappings[i]->next = cloned_node_mappings[orig_node_mappings[i]->next->node_index];
 	  }
   }
   // now, deal with the reticulations
   for (i = 0; i < network->reticulation_count; ++i) {
-	  cloned_network->reticulation_nodes[i] = cloned_node_mappings[network->reticulation_nodes[i]->link_index];
+	  cloned_network->reticulation_nodes[i] = cloned_node_mappings[network->reticulation_nodes[i]->node_index];
   }
   // now, deal with the nodes
   for (i = 0; i < network->inner_tree_count + network->reticulation_count + network->tip_count; ++i) {
-	  cloned_network->nodes[i] = cloned_node_mappings[network->nodes[i]->link_index];
+	  cloned_network->nodes[i] = cloned_node_mappings[network->nodes[i]->node_index];
   }
   // now, deal with the root
-  cloned_network->vroot = cloned_node_mappings[network->vroot->link_index];
+  cloned_network->vroot = cloned_node_mappings[network->vroot->node_index];
   free(cloned_node_mappings);
   free(orig_node_mappings);
 

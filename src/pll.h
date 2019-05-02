@@ -484,7 +484,7 @@ typedef struct pll_unetwork_node_s
   double length;
   double prob;
   double support;
-  unsigned int node_index; // index in the nodes array
+  unsigned int node_index; // unique index for just this subnode / link. In a binary network, a node consists of three subnodes.
   unsigned int clv_index;
   int scaler_index;
   unsigned int pmatrix_index;
@@ -501,21 +501,17 @@ typedef struct pll_unetwork_node_s
   char* label;
   char* reticulation_name;
 
-  unsigned int link_index; // unique index for just this link node
-
   void * data;
 } pll_unetwork_node_t;
 
 typedef struct pll_unetwork_s
 {
   unsigned int tip_count;
-  //unsigned int inner_count;
   unsigned int inner_tree_count;
   unsigned int reticulation_count;
   unsigned int edge_count;
   unsigned int tree_edge_count;
   int binary;
-  unsigned int max_link_index; // index of the highest link, link indices starting from 1
 
   pll_unetwork_node_t ** nodes; // pointers to all nodes in the network, both tree nodes and reticulation nodes
   pll_unetwork_node_t ** reticulation_nodes; // pointers to all reticulation nodes in the network

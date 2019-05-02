@@ -117,7 +117,7 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
                                     unsigned int * inner_clv_index,
                                     int * inner_scaler_index,
                                     unsigned int * inner_node_index,
-                                    unsigned int level)
+                                    unsigned int level) // TODO: This thing is HORRIBLE!!!
 {
   if (!node->next)
   {
@@ -152,7 +152,7 @@ static void recursive_assign_indices(pll_unetwork_node_t * node,
     do
     {
       if (snode->active) {
-        snode->node_index = (*inner_node_index)++;
+        //snode->node_index = (*inner_node_index)++;
         snode->clv_index = *inner_clv_index;
         snode->scaler_index = *inner_scaler_index;
         if (snode == node && level > 0)
@@ -181,6 +181,8 @@ PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * root,
 
   if (!root->next)
     root = root->back;
+
+  // TODO: How about we rewrite this in a matter that makes sense????!!!!
 
   recursive_assign_indices(root,
                            &tip_clv_index,
@@ -211,7 +213,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
     pll_unetwork_node_t * snode = level ? node->next : node;
 	do
 	{
-	  if (!snode->incoming)
+	  if (!snode->incoming) // TODO: Unfortunately, this doesn't set the node indices for all nodes...
 	  {
 		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
 			fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
@@ -308,19 +310,39 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   return count;
 }
 
-static void fill_link_indices_recursive(pll_unetwork_t * network, pll_unetwork_node_t * node) {
-	if (!node || node->link_index > 0) {
-		return;
+static void set_indices(pll_unetwork_t * network) {
+	unsigned int node_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
+	unsigned int i;
+	for (i = 0; i < network->tip_count; ++i) {
+		network->nodes[i]->clv_index = i;
+		network->nodes[i]->node_index = i;
+		network->nodes[i]->pmatrix_index = i; // this index is for the edges...
+		network->nodes[i]->back->pmatrix_index = i;
+		network->nodes[i]->scaler_index = PLL_SCALE_BUFFER_NONE;
 	}
-	node->link_index = network->max_link_index;
-	network->max_link_index++;
-	fill_link_indices_recursive(network, node->next);
-	fill_link_indices_recursive(network, node->back);
-}
+	unsigned int clv_idx = network->tip_count;
+	unsigned int node_idx = network->tip_count;
+	unsigned int pmatrix_idx = network->tip_count;
 
-static void fill_link_indices(pll_unetwork_t * network) {
-	network->max_link_index = 0;
-	fill_link_indices_recursive(network, network->vroot);
+	for (i = network->tip_count; i < node_count; ++i) {
+		network->nodes[i]->clv_index = clv_idx;
+		network->nodes[i]->node_index = node_idx++;
+		network->nodes[i]->scaler_index = network->nodes[i]->clv_index - network->tip_count;
+		pll_unetwork_node_t * snode = network->nodes[i]->next;
+		while (snode != network->nodes[i]) {
+			snode->clv_index = clv_idx;
+			snode->node_index = node_idx++;
+			snode->scaler_index = snode->clv_index - network->tip_count;
+			if (snode->back != network->nodes[0] && snode->back->pmatrix_index == 0) {
+				snode->pmatrix_index = pmatrix_idx;
+				snode->back->pmatrix_index = pmatrix_idx++;
+			} else {
+				snode->pmatrix_index = snode->back->pmatrix_index;
+			}
+			snode = snode->next;
+		}
+		++clv_idx;
+	}
 }
 
 static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
@@ -421,7 +443,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
 
-  fill_link_indices(network);
+  set_indices(network);
 
   return network;
 }
