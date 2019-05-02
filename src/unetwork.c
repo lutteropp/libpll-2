@@ -546,7 +546,47 @@ PLL_EXPORT void pll_unetwork_create_operations(pll_unetwork_node_t * const* trav
                                             pll_operation_t * ops,
                                             unsigned int * matrix_count,
                                             unsigned int * ops_count) {
-	return;
+  const pll_unetwork_node_t * node;
+  unsigned int i;
+
+  *ops_count = 0;
+  if (matrix_count)
+	*matrix_count = 0;
+
+  for (i = 0; i < trav_buffer_size; ++i)
+  {
+	node = trav_buffer[i];
+
+	/* if the current node is the second end-point of the edge
+	shared with the root node, then do not add the edge to the
+	list as it will be added in the end (avoid duplicate edges
+	in the list) */
+	if (node != trav_buffer[trav_buffer_size - 1]->back)
+	{
+	  if (branches)
+		*branches++ = node->length;
+	  if (pmatrix_indices)
+		*pmatrix_indices++ = node->pmatrix_index;
+	  if (matrix_count)
+		*matrix_count = *matrix_count + 1;
+	}
+
+	if (node->next)
+	{
+	  ops[*ops_count].parent_clv_index = node->clv_index;
+	  ops[*ops_count].parent_scaler_index = node->scaler_index;
+
+	  ops[*ops_count].child1_clv_index = node->next->back->clv_index;
+	  ops[*ops_count].child1_scaler_index = node->next->back->scaler_index;
+	  ops[*ops_count].child1_matrix_index = node->next->back->pmatrix_index;
+
+	  ops[*ops_count].child2_clv_index = node->next->next->back->clv_index;
+	  ops[*ops_count].child2_scaler_index = node->next->next->back->scaler_index;
+	  ops[*ops_count].child2_matrix_index = node->next->next->back->pmatrix_index;
+
+	  *ops_count = *ops_count + 1;
+	}
+  }
 }
 
 /* a callback function for checking network tree integrity */
