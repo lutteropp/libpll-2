@@ -1240,8 +1240,6 @@ PLL_EXPORT int pll_unetwork_check_tree_integrity(const pll_unetwork_t * root);
 
 PLL_EXPORT int pll_unetwork_check_integrity(const pll_unetwork_t * root);
 
-PLL_EXPORT pll_unetwork_node_t * pll_unetwork_graph_clone(const pll_unetwork_node_t * root);
-
 PLL_EXPORT pll_unetwork_t * pll_unetwork_clone(const pll_unetwork_t * root);
 
 PLL_EXPORT pll_unetwork_t * pll_rnetwork_unroot(pll_rnetwork_t * network);

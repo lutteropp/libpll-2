@@ -112,86 +112,6 @@ static int unetwork_is_rooted(const pll_unetwork_node_t * root)
   return (root->next && root->next->next == root) ? 1 : 0;
 }
 
-static void recursive_assign_indices(pll_unetwork_node_t * node,
-                                    unsigned int * tip_clv_index,
-                                    unsigned int * inner_clv_index,
-                                    int * inner_scaler_index,
-                                    unsigned int * inner_node_index,
-                                    unsigned int level) // TODO: This thing is HORRIBLE!!!
-{
-  if (!node->next)
-  {
-    if (node->active) {
-      /* tip node */
-      node->node_index = *tip_clv_index;
-      node->clv_index = *tip_clv_index;
-      node->pmatrix_index = *tip_clv_index;
-      node->scaler_index = PLL_SCALE_BUFFER_NONE;
-      *tip_clv_index = *tip_clv_index + 1;
-    }
-  }
-  else
-  {
-    /* inner node */
-    pll_unetwork_node_t * snode = level ? node->next : node;
-    do
-    {
-      if (snode->active /*&& snode->incoming*/) { // TODO: seems that the snode->incoming one destroys it...
-        recursive_assign_indices(snode->back,
-                                 tip_clv_index,
-                                 inner_clv_index,
-                                 inner_scaler_index,
-                                 inner_node_index,
-                                 level+1);
-      }
-      snode = snode->next;
-    }
-    while (snode != node);
-
-    snode = node;
-    do
-    {
-      if (snode->active) {
-        //snode->node_index = (*inner_node_index)++;
-        snode->clv_index = *inner_clv_index;
-        snode->scaler_index = *inner_scaler_index;
-        if (snode == node && level > 0)
-      	  snode->pmatrix_index = *inner_clv_index;
-        else
-          snode->pmatrix_index = snode->back->pmatrix_index;
-       }
-      snode = snode->next;
-    }
-    while (snode != node);
-
-    if (node->active) {
-      *inner_clv_index += 1;
-      *inner_scaler_index += 1;
-    }
-  }
-}
-
-PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * root,
-                                                 unsigned int tip_count)
-{
-  unsigned int tip_clv_index = 0;
-  unsigned int inner_clv_index = tip_count;
-  unsigned int inner_node_index = tip_count;
-  int inner_scaler_index = 0;
-
-  if (!root->next)
-    root = root->back;
-
-  // TODO: How about we rewrite this in a matter that makes sense????!!!!
-
-  recursive_assign_indices(root,
-                           &tip_clv_index,
-                           &inner_clv_index,
-                           &inner_scaler_index,
-                           &inner_node_index,
-                           0);
-}
-
 static void fill_nodes_recursive(pll_unetwork_node_t * node,
                                          pll_unetwork_node_t ** array,
 		                                 pll_unetwork_node_t ** reticulation_nodes,
@@ -201,39 +121,40 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
                                          unsigned int level,
 	                                     int* visited_reticulations) // TODO: Is this correct?
 {
-  unsigned int index;
-  if (!node->next) // we have a tip node
+  if (!node || (pll_unetwork_is_reticulation(node) && visited_reticulations[node->reticulation_index])) {
+	  return;
+  }
+
+  pll_unetwork_node_t * snode = node;
+  do
   {
-    index = *tip_index;
-    *tip_index += 1;
+	if (!snode->incoming) // outgoing edge
+	{
+	  fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index, inner_index, level + 1, visited_reticulations);
+	}
+	snode = snode->next;
+  } while (snode && snode != node);
+
+  // now, we are at the node itself.
+  unsigned int index;
+  if (!node->next)
+  {
+	index = *tip_index;
+	*tip_index += 1;
   }
   else
-  {
-	/* inner node */
-    pll_unetwork_node_t * snode = level ? node->next : node;
-	do
-	{
-	  if (!snode->incoming) // TODO: Unfortunately, this doesn't set the node indices for all nodes...
-	  {
-		if (!pll_unetwork_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
-			fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
-			                               inner_index, level+1, visited_reticulations);
-	  }
-	  snode = snode->next;
+  { // inner node
+	if (pll_unetwork_is_reticulation(node)) {
+	  	reticulation_nodes[node->reticulation_index] = node;
+	  	visited_reticulations[node->reticulation_index] += 1;
 	}
-	while (snode != node);
-
+	// TODO: We need to ensure that we only put one representative of each node into the array!!! That is, only the incoming node...
+	assert(level == 0 || node->incoming);
 	index = *inner_index;
 	*inner_index += 1;
-
-	if (pll_unetwork_is_reticulation(node)) {
-	  reticulation_nodes[node->reticulation_index] = node;
-	  visited_reticulations[node->reticulation_index] += 1;
-	}
   }
   assert(index < array_size);
   array[index] = node;
-  node->node_index = index;
 }
 
 static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
@@ -502,10 +423,6 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick_string(const char * s)
   pll_unetwork_t * unetwork = pll_rnetwork_unroot(rnetwork);
   unetwork->binary = rnetwork->binary;
   pll_rnetwork_destroy(rnetwork, NULL);
-  pll_unetwork_set_reticulation_parents(unetwork, 0);
-  /* initialize clv and scaler indices */
-  pll_unetwork_reset_template_indices(unetwork->vroot, unetwork->tip_count);
-  pll_unetwork_forget_reticulation_parents(unetwork);
   return unetwork;
 }
 
@@ -514,9 +431,5 @@ PLL_EXPORT pll_unetwork_t * pll_unetwork_parse_newick(const char * filename)
   pll_rnetwork_t * rnetwork = pll_rnetwork_parse_newick(filename);
   pll_unetwork_t * unetwork = pll_rnetwork_unroot(rnetwork);
   pll_rnetwork_destroy(rnetwork, NULL);
-  pll_unetwork_set_reticulation_parents(unetwork, 0);
-  /* initialize clv and scaler indices */
-  pll_unetwork_reset_template_indices(unetwork->vroot, unetwork->tip_count);
-  pll_unetwork_forget_reticulation_parents(unetwork);
   return unetwork;
 }
