@@ -21,6 +21,11 @@
 
 #ifndef PLL_H
 #define PLL_H
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -1012,6 +1017,8 @@ PLL_EXPORT void pll_unetwork_reset_template_indices(pll_unetwork_node_t * node,
 
 PLL_EXPORT void pll_unetwork_graph_destroy(pll_unetwork_node_t * root,
                                         void (*cb_destroy)(void *));
+
+PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network);
 
 PLL_EXPORT pll_unetwork_t * pll_unetwork_wrapnetwork(pll_unetwork_node_t * root, unsigned int tip_count);
 

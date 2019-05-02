@@ -310,7 +310,7 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   return count;
 }
 
-static void set_indices(pll_unetwork_t * network) {
+PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network) {
 	unsigned int node_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
 	unsigned int i;
 	for (i = 0; i < network->tip_count; ++i) {
@@ -443,7 +443,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
 
-  set_indices(network);
+  pll_unetwork_set_indices(network);
 
   return network;
 }
