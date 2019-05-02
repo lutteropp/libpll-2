@@ -231,6 +231,24 @@ static unsigned int unetwork_count_nodes(pll_unetwork_node_t * root, unsigned in
   return count;
 }
 
+static void pll_unetwork_unset_indices(pll_unetwork_t * network) {
+	unsigned int node_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
+	unsigned int i;
+	for (i = 0; i < node_count; ++i) {
+		network->nodes[i]->clv_index = 0;
+		network->nodes[i]->node_index = 0;
+		network->nodes[i]->scaler_index = 0;
+		pll_unetwork_node_t * snode = network->nodes[i]->next;
+		while (snode && snode != network->nodes[i]) {
+			snode->clv_index = 0;
+			snode->node_index = 0;
+			snode->scaler_index = 0;
+			snode->pmatrix_index = 0;
+			snode = snode->next;
+		}
+	}
+}
+
 PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network) {
 	unsigned int node_count = network->tip_count + network->inner_tree_count + network->reticulation_count;
 	unsigned int i;
@@ -257,6 +275,7 @@ PLL_EXPORT void pll_unetwork_set_indices(pll_unetwork_t * network) {
 			if (snode->back != network->nodes[0] && snode->back->pmatrix_index == 0) {
 				snode->pmatrix_index = pmatrix_idx;
 				snode->back->pmatrix_index = pmatrix_idx++;
+				assert(snode->pmatrix_index == snode->back->pmatrix_index);
 			} else {
 				snode->pmatrix_index = snode->back->pmatrix_index;
 			}
@@ -364,6 +383,7 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
   network->binary = (inner_tree_count == tip_count - (unetwork_is_rooted(root) ? 1 : 2));
   network->vroot = root;
 
+  pll_unetwork_unset_indices(network); // just to be sure
   pll_unetwork_set_indices(network);
 
   return network;
