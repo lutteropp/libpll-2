@@ -215,7 +215,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
 	{
 	  if (!snode->incoming) // TODO: Unfortunately, this doesn't set the node indices for all nodes...
 	  {
-		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
+		if (!pll_unetwork_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
 			fill_nodes_recursive(snode->back, array, reticulation_nodes, array_size, tip_index,
 			                               inner_index, level+1, visited_reticulations);
 	  }
@@ -226,7 +226,7 @@ static void fill_nodes_recursive(pll_unetwork_node_t * node,
 	index = *inner_index;
 	*inner_index += 1;
 
-	if (node_is_reticulation(node)) {
+	if (pll_unetwork_is_reticulation(node)) {
 	  reticulation_nodes[node->reticulation_index] = node;
 	  visited_reticulations[node->reticulation_index] += 1;
 	}
@@ -257,14 +257,14 @@ static unsigned int unetwork_count_nodes_recursive(pll_unetwork_node_t * node,
 	{
 	  if (!snode->incoming)
 	  {
-		if (!node_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
+		if (!pll_unetwork_is_reticulation(snode->back) || !visited_reticulations[snode->back->reticulation_index])
 	      count += unetwork_count_nodes_recursive(snode->back, tip_count, inner_tree_count, reticulation_count, level+1, visited_reticulations);
 	  }
 	  snode = snode->next;
 	}
 	while (snode != node);
 
-	if (node_is_reticulation(node)) {
+	if (pll_unetwork_is_reticulation(node)) {
 	  *reticulation_count += 1;
 	  visited_reticulations[node->reticulation_index] += 1;
 	} else {

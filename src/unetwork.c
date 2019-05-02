@@ -90,22 +90,22 @@ unsigned int count_active_incoming(const pll_unetwork_node_t * node) {
 	return cnt;
 }
 
-PLL_EXPORT int node_is_inner_tree(const pll_unetwork_node_t * node) {
+PLL_EXPORT int pll_unetwork_is_inner_tree(const pll_unetwork_node_t * node) {
 	unsigned int cnt_out = count_outgoing(node);
 	return (cnt_out > 1);
 }
 
-PLL_EXPORT int node_is_reticulation(const pll_unetwork_node_t * node) {
+PLL_EXPORT int pll_unetwork_is_reticulation(const pll_unetwork_node_t * node) {
 	unsigned int cnt_in = count_incoming(node);
 	return (cnt_in > 1);
 }
 
-PLL_EXPORT int node_is_leaf(const pll_unetwork_node_t * node) {
+PLL_EXPORT int pll_unetwork_is_leaf(const pll_unetwork_node_t * node) {
 	unsigned int cnt_out = count_outgoing(node);
 	return (cnt_out == 0);
 }
 
-PLL_EXPORT int node_is_root(const pll_unetwork_node_t * node) {
+PLL_EXPORT int pll_unetwork_is_root(const pll_unetwork_node_t * node) {
 	unsigned int cnt_in = count_incoming(node);
 	return (cnt_in == 0);
 }
@@ -118,7 +118,7 @@ static char * newick_unetwork_recurse(const pll_unetwork_node_t * root,
   int size_alloced = 0;
   assert(root != NULL);
 
-  if (node_is_reticulation(root) && visited_reticulations[root->reticulation_index]) { // we already encountered this node, act like if it is a dead end.
+  if (pll_unetwork_is_reticulation(root) && visited_reticulations[root->reticulation_index]) { // we already encountered this node, act like if it is a dead end.
 	if (cb_serialize)
 	{
 	  // TODO: does this work?
@@ -186,7 +186,7 @@ static char * newick_unetwork_recurse(const pll_unetwork_node_t * root,
 
     if (level > 0)
     {
-      if (node_is_reticulation(root))
+      if (pll_unetwork_is_reticulation(root))
       {
     	if (cb_serialize)
 		{
@@ -592,7 +592,7 @@ static int cb_check_tree_integrity_mult(const pll_unetwork_t * network,
     {
       subnodes++;
 
-      if (network->binary && subnodes > 3 && !node_is_reticulation(snode))
+      if (network->binary && subnodes > 3 && !pll_unetwork_is_reticulation(snode))
       {
         snprintf(pll_errmsg, 200, "Multifurcation found in a binary network "
             "at node with clv_index = %u", snode->clv_index);
@@ -672,7 +672,7 @@ static int cb_check_integrity_mult(const pll_unetwork_t * network,
     {
       subnodes++;
 
-      if (network->binary && subnodes > 3 && !node_is_reticulation(snode))
+      if (network->binary && subnodes > 3 && !pll_unetwork_is_reticulation(snode))
       {
         snprintf(pll_errmsg, 200, "Multifurcation found in a binary network "
             "at node with clv_index = %u", snode->clv_index);
@@ -800,7 +800,7 @@ static void unetwork_recurse_clone(pll_unetwork_node_t * new_root, const pll_une
   const pll_unetwork_node_t * node = root->back;
   if (node)
   {
-	if (node_is_reticulation(node)) {
+	if (pll_unetwork_is_reticulation(node)) {
 		if (reticulation_node_mappings[node->reticulation_index]) {
 			// TODO: We already encountered this reticulation node...
 			if (root->incoming) { // we have an edge entering the reticulation node

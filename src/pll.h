@@ -1252,10 +1252,10 @@ PLL_EXPORT void pll_unetwork_create_pars_buildops(pll_unetwork_node_t * const* t
                                                pll_pars_buildop_t * ops,
                                                unsigned int * ops_count);
 
-PLL_EXPORT int node_is_inner_tree(const pll_unetwork_node_t * node);
-PLL_EXPORT int node_is_reticulation(const pll_unetwork_node_t * node);
-PLL_EXPORT int node_is_leaf(const pll_unetwork_node_t * node);
-PLL_EXPORT int node_is_root(const pll_unetwork_node_t * node);
+PLL_EXPORT int pll_unetwork_is_inner_tree(const pll_unetwork_node_t * node);
+PLL_EXPORT int pll_unetwork_is_reticulation(const pll_unetwork_node_t * node);
+PLL_EXPORT int pll_unetwork_is_leaf(const pll_unetwork_node_t * node);
+PLL_EXPORT int pll_unetwork_is_root(const pll_unetwork_node_t * node);
 
 /* functions in core_partials.c */
 
