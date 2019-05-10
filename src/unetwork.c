@@ -37,6 +37,7 @@ char * xstrdup(const char * s)
 }
 
 unsigned int count_outgoing(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
 	do {
@@ -48,7 +49,8 @@ unsigned int count_outgoing(const pll_unetwork_node_t * node) {
 	return cnt;
 }
 
-unsigned int count_active_outgoing(const pll_unetwork_node_t * node) {
+PLL_EXPORT unsigned int pll_unetwork_count_active_outgoing(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
 	if (!node->incoming) {
@@ -64,6 +66,7 @@ unsigned int count_active_outgoing(const pll_unetwork_node_t * node) {
 }
 
 unsigned int count_incoming(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
 	if (node->incoming) {
@@ -78,7 +81,8 @@ unsigned int count_incoming(const pll_unetwork_node_t * node) {
 	return cnt;
 }
 
-unsigned int count_active_incoming(const pll_unetwork_node_t * node) {
+PLL_EXPORT unsigned int pll_unetwork_count_active_incoming(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt = 0;
 	pll_unetwork_node_t * snode = node->next;
 	do {
@@ -91,23 +95,64 @@ unsigned int count_active_incoming(const pll_unetwork_node_t * node) {
 }
 
 PLL_EXPORT int pll_unetwork_is_inner_tree(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt_out = count_outgoing(node);
 	return (cnt_out > 1);
 }
 
 PLL_EXPORT int pll_unetwork_is_reticulation(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt_in = count_incoming(node);
 	return (cnt_in > 1);
 }
 
 PLL_EXPORT int pll_unetwork_is_leaf(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt_out = count_outgoing(node);
 	return (cnt_out == 0);
 }
 
 PLL_EXPORT int pll_unetwork_is_root(const pll_unetwork_node_t * node) {
+	assert(node);
 	unsigned int cnt_in = count_incoming(node);
 	return (cnt_in == 0);
+}
+
+PLL_EXPORT pll_unetwork_node_t * pll_unetwork_get_reticulation_child(const pll_unetwork_node_t * node) {
+	assert(pll_unetwork_is_reticulation(node));
+	while (node && node->incoming) {
+		node = node->next;
+	}
+	assert(node && !node->incoming && node->active);
+	return node->back;
+}
+
+PLL_EXPORT pll_unetwork_node_t * pll_unetwork_get_active_parent(const pll_unetwork_node_t* node) {
+	assert(pll_unetwork_count_active_incoming(node) == 1);
+	while (node && (!node->incoming || !node->active)) {
+		node = node->next;
+	}
+	assert(node && node->incoming && node->active);
+	return node->back;
+}
+
+PLL_EXPORT int pll_unetwork_get_tree_children(const pll_unetwork_node_t * node, pll_unetwork_node_t ** child1, pll_unetwork_node_t ** child2) {
+	assert(node);
+	assert(!pll_unetwork_is_reticulation(node));
+	pll_unetwork_node_t * snode = node;
+	do {
+		if (!snode->incoming) {
+			if (!*child1) {
+				*child1 = snode->back;
+			} else if (!*child2) {
+				*child2 = snode->back;
+			} else {
+				return PLL_FAILURE;
+			}
+		}
+		snode = snode->next;
+	} while (snode && snode != node);
+	return PLL_SUCCESS;
 }
 
 static char * newick_unetwork_recurse(const pll_unetwork_node_t * root,
@@ -522,7 +567,7 @@ static int cb_check_tree_integrity_mult(const pll_unetwork_t * network,
   double length = node->length;
   unsigned int subnodes = 1;
 
-  if (count_active_incoming(node) > 1) {
+  if (pll_unetwork_count_active_incoming(node) > 1) {
 	  snprintf(pll_errmsg, 200, "Encountered a node with more than one active incoming edge");
 	  return PLL_FAILURE;
   }

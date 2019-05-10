@@ -6,7 +6,7 @@ set (LIBPLL_BASE_FLAGS "-Wall -Wsign-compare -D_GNU_SOURCE -O3 -fPIC ")
 
 if(PLLMOD_DEBUG)
   #set(LIBPLL_BASE_FLAGS "${LIBPLL_BASE_FLAGS} -DDEBUG")
-  set(LIBPLL_BASE_FLAGS "-Wall -Wsign-compare -D_GNU_SOURCE -fPIC -DDEBUG")
+  set(LIBPLL_BASE_FLAGS "-Wall -Wsign-compare -D_GNU_SOURCE -fPIC -DDEBUG -g -O0")
 endif()
 
 set (SSE_FLAGS "-msse3")

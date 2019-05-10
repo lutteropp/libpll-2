@@ -249,7 +249,7 @@ static void rnetwork_tree_traverse_postorder(pll_rnetwork_node_t * node, int (*c
 		if (living_children_count == 0) {
 			dead[node->idx] = 1;
 		} else if (living_children_count > 1) // both children are alive.
-				{
+		{
 			outbuffer[*index] = node;
 			*index = *index + 1;
 		}

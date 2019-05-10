@@ -185,6 +185,9 @@ static pll_unetwork_node_t * unetwork_inner_create(unsigned int i)
   node->clv_index = i;
   node->next->clv_index = i;
   node->next->next->clv_index = i;
+  node->active = 1;
+  node->next->active = 1;
+  node->next->next->active = 1;
 
   return node;
 }
@@ -212,6 +215,8 @@ static void unetwork_link(pll_unetwork_node_t * a, pll_unetwork_node_t * b)
 
   a->back = b;
   b->back = a;
+  a->incoming = 0;
+  b->incoming = 1;
 }
 
 static void unetwork_edgesplit(pll_unetwork_node_t * a, pll_unetwork_node_t * b, pll_unetwork_node_t * c)
