@@ -39,23 +39,26 @@ char * xstrdup(const char * s)
 unsigned int count_outgoing(const pll_unetwork_node_t * node) {
 	assert(node);
 	unsigned int cnt = 0;
+	if (!node->incoming) {
+		cnt++;
+	}
 	pll_unetwork_node_t * snode = node->next;
-	do {
+	while (snode && snode != node) {
 		if (!snode->incoming) {
 			cnt++;
 		}
 		snode = snode->next;
-	} while (snode && snode != node);
+	}
 	return cnt;
 }
 
 PLL_EXPORT unsigned int pll_unetwork_count_active_outgoing(const pll_unetwork_node_t * node) {
 	assert(node);
 	unsigned int cnt = 0;
-	pll_unetwork_node_t * snode = node->next;
-	if (!node->incoming) {
+	if (!node->incoming && node->active) {
 		cnt++;
 	}
+	pll_unetwork_node_t * snode = node->next;
 	while (snode && snode != node) {
 		if (!snode->incoming && snode->active) {
 			cnt++;
@@ -68,10 +71,10 @@ PLL_EXPORT unsigned int pll_unetwork_count_active_outgoing(const pll_unetwork_no
 unsigned int count_incoming(const pll_unetwork_node_t * node) {
 	assert(node);
 	unsigned int cnt = 0;
-	pll_unetwork_node_t * snode = node->next;
 	if (node->incoming) {
 		cnt++;
 	}
+	pll_unetwork_node_t * snode = node->next;
 	while (snode && snode != node) {
 		if (snode->incoming) {
 			cnt++;
@@ -84,13 +87,16 @@ unsigned int count_incoming(const pll_unetwork_node_t * node) {
 PLL_EXPORT unsigned int pll_unetwork_count_active_incoming(const pll_unetwork_node_t * node) {
 	assert(node);
 	unsigned int cnt = 0;
+	if (node->incoming && node->active) {
+		cnt++;
+	}
 	pll_unetwork_node_t * snode = node->next;
-	do {
+	while (snode && snode != node) {
 		if (snode->incoming && snode->active) {
 			cnt++;
 		}
 		snode = snode->next;
-	} while (snode && snode != node);
+	}
 	return cnt;
 }
 
