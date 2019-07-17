@@ -102,8 +102,14 @@ PLL_EXPORT void pll_unetwork_destroy(pll_unetwork_t * network,
   }
 
   /* deallocate network structure */
-  free(network->nodes);
-  free(network->reticulation_nodes);
+  if (network->nodes)
+  {
+    free(network->nodes);
+  }
+  if (network->reticulation_nodes)
+  {
+    free(network->reticulation_nodes);
+  }
   free(network);
 }
 
@@ -356,12 +362,19 @@ static pll_unetwork_t * unetwork_wrapnetwork(pll_unetwork_node_t * root,
     return PLL_FAILURE;
   }
 
-  network->reticulation_nodes = (pll_unetwork_node_t **)malloc(reticulation_count*sizeof(pll_unetwork_node_t *));
-  if (!network->reticulation_nodes)
+  if (reticulation_count > 0)
   {
-    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    return PLL_FAILURE;
+    network->reticulation_nodes = (pll_unetwork_node_t **)malloc(reticulation_count*sizeof(pll_unetwork_node_t *));
+	if (!network->reticulation_nodes)
+	{
+	  snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+	  pll_errno = PLL_ERROR_MEM_ALLOC;
+	  return PLL_FAILURE;
+	}
+  }
+  else
+  {
+	network->reticulation_nodes = NULL;
   }
 
   unsigned int tip_index = 0;

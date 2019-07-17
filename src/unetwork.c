@@ -145,7 +145,7 @@ PLL_EXPORT pll_unetwork_node_t * pll_unetwork_get_active_parent(const pll_unetwo
 PLL_EXPORT int pll_unetwork_get_tree_children(const pll_unetwork_node_t * node, pll_unetwork_node_t ** child1, pll_unetwork_node_t ** child2) {
 	assert(node);
 	assert(!pll_unetwork_is_reticulation(node));
-	pll_unetwork_node_t * snode = node;
+	const pll_unetwork_node_t * snode = node;
 	do {
 		if (!snode->incoming) {
 			if (!*child1) {
