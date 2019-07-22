@@ -280,7 +280,7 @@ PLL_EXPORT int pll_rnetwork_tree_traverse(pll_rnetwork_t * network, int traversa
 	 at each node the callback function is called to decide whether we
 	 are going to traversing the subtree rooted at the specific node */
 
-	if (traversal == PLL_TREE_TRAVERSE_POSTORDER)
+	if (traversal == PLL_NETWORK_TRAVERSE_POSTORDER)
 		rnetwork_tree_traverse_postorder(network->root, cbtrav, trav_size, outbuffer, tree_number, dead);
 	else {
 		snprintf(pll_errmsg, 200, "Invalid traversal value.");
