@@ -237,10 +237,18 @@ static void unetwork_edgesplit(pll_unetwork_node_t * a, pll_unetwork_node_t * b,
   */
 
   /* link d<->c */
-  unetwork_link(a->back,c);
+  if (a->back->incoming) {
+	  unetwork_link(c, a->back);
+  } else {
+	  unetwork_link(a->back, c);
+  }
 
   /* link a<->b */
-  unetwork_link(a,b);
+  if (a->incoming) {
+	  unetwork_link(b, a);
+  } else {
+	  unetwork_link(a, b);
+  }
 }
 
 static unsigned int unetwork_iterate(pll_parsimony_t ** list,
