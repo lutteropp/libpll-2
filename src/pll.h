@@ -133,6 +133,8 @@
 #define PLL_ATTRIB_SITE_REPEATS    (1 << 10)
 #define PLL_REPEATS_LOOKUP_SIZE  2000000 
 
+#define PLL_ATTRIB_MASK ((1 << 11) - 1)
+
 /* topological rearrangements */
 
 #define PLL_UTREE_MOVE_SPR                  1
@@ -159,14 +161,15 @@
 #define PLL_ERROR_FILE_OPEN                100
 #define PLL_ERROR_FILE_SEEK                101
 #define PLL_ERROR_FILE_EOF                 102
-#define PLL_ERROR_FASTA_ILLEGALCHAR        103
-#define PLL_ERROR_FASTA_UNPRINTABLECHAR    104
-#define PLL_ERROR_FASTA_INVALIDHEADER      105
-#define PLL_ERROR_PHYLIP_SYNTAX            106
-#define PLL_ERROR_PHYLIP_LONGSEQ           107
-#define PLL_ERROR_PHYLIP_NONALIGNED        108
-#define PLL_ERROR_PHYLIP_ILLEGALCHAR       109
-#define PLL_ERROR_PHYLIP_UNPRINTABLECHAR   110
+#define PLL_ERROR_FASTA_ILLEGALCHAR        201
+#define PLL_ERROR_FASTA_UNPRINTABLECHAR    202
+#define PLL_ERROR_FASTA_INVALIDHEADER      203
+#define PLL_ERROR_FASTA_NONALIGNED         204
+#define PLL_ERROR_PHYLIP_SYNTAX            231
+#define PLL_ERROR_PHYLIP_LONGSEQ           232
+#define PLL_ERROR_PHYLIP_NONALIGNED        233
+#define PLL_ERROR_PHYLIP_ILLEGALCHAR       234
+#define PLL_ERROR_PHYLIP_UNPRINTABLECHAR   235
 #define PLL_ERROR_NEWICK_SYNTAX            111
 #define PLL_ERROR_MEM_ALLOC                112
 #define PLL_ERROR_PARAM_INVALID            113
@@ -773,7 +776,8 @@ PLL_EXPORT void pll_fill_parent_scaler(unsigned int scaler_size,
 
 PLL_EXPORT int pll_repeats_enabled(const pll_partition_t *partition);
 
-PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition, size_t size);
+PLL_EXPORT void pll_resize_repeats_lookup(pll_partition_t *partition,
+                                          unsigned int size);
 
 PLL_EXPORT unsigned int pll_get_sites_number(const pll_partition_t * partition,
                                              unsigned int clv_index);
@@ -970,6 +974,8 @@ PLL_EXPORT long pll_fasta_getfilesize(const pll_fasta_t * fd);
 PLL_EXPORT long pll_fasta_getfilepos(pll_fasta_t * fd);
 
 PLL_EXPORT int pll_fasta_rewind(pll_fasta_t * fd);
+
+pll_msa_t * pll_fasta_load(const char * fname);
 
 /* functions in parse_rtree.y */
 
@@ -2912,9 +2918,9 @@ PLL_EXPORT void pll_random_destroy(pll_random_state * rstate);
 
 PLL_EXPORT int pll_hardware_probe(void);
 
-PLL_EXPORT void pll_hardware_dump();
+PLL_EXPORT void pll_hardware_dump(void);
 
-PLL_EXPORT void pll_hardware_ignore();
+PLL_EXPORT void pll_hardware_ignore(void);
 
 #ifdef __cplusplus
 } /* extern "C" */
