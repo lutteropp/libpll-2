@@ -60,15 +60,8 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
                                                 unsigned int tipmap_size,
                                                 unsigned int attrib)
 {
-  unsigned int i,j,k,n;
-
-  const double * lmat;
-  const double * rmat;
-
-  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int span_padded = states_padded * rate_cats;
-
-  pll_state_t lstate;
+  unsigned int const states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int const span_padded = states_padded * rate_cats;
 
   /* dedicated functions for 4x4 matrices (DNA) */
   if (states == 4)
@@ -107,7 +100,6 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
 
   /* scaling-related stuff */
   unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
-  unsigned int scale_mask;
   unsigned int init_mask;
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
   __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
@@ -129,24 +121,29 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
 
   size_t displacement = (states_padded - states) * (states_padded);
 
-  __m256i mask;
+  double* orig_parent_clv = parent_clv;
+  double* orig_right_clv = right_clv;
 
   /* compute CLV */
-  for (n = 0; n < sites; ++n)
+  #pragma omp parallel for private(parent_clv, right_clv)
+  for (unsigned int n = 0; n < sites; ++n)
   {
-    lmat = left_matrix;
-    rmat = right_matrix;
+    const double * lmat = left_matrix;
+    const double * rmat = right_matrix;
 
-    scale_mask = init_mask;
+    unsigned int scale_mask = init_mask;
 
-    lstate = tipmap[left_tipchars[n]];
+    pll_state_t lstate = tipmap[left_tipchars[n]];
 
-    for (k = 0; k < rate_cats; ++k)
+    for (unsigned int k = 0; k < rate_cats; ++k)
     {
+      parent_clv = orig_parent_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      right_clv = orig_right_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+
       unsigned int rate_mask = 0xF;
 
       /* iterate over quadruples of rows */
-      for (i = 0; i < states_padded; i += 4)
+      for (unsigned int i = 0; i < states_padded; i += 4)
       {
 
         __m256d v_terma0 = _mm256_setzero_pd();
@@ -177,11 +174,11 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
         register int lsb = 0;
 
         /* iterate over quadruples of columns */
-        for (j = 0; j < states_padded; j += 4)
+        for (unsigned int j = 0; j < states_padded; j += 4)
         {
 
           /* set mask */
-          mask = _mm256_set_epi64x(
+          __m256i mask = _mm256_set_epi64x(
                     ((lstate >> (lsb+3)) & 1) ? ~0 : 0,
                     ((lstate >> (lsb+2)) & 1) ? ~0 : 0,
                     ((lstate >> (lsb+1)) & 1) ? ~0 : 0,
@@ -284,7 +281,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
          * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
         if (rate_mask == 0xF)
         {
-          for (i = 0; i < states_padded; i += 4)
+          for (unsigned int i = 0; i < states_padded; i += 4)
           {
             __m256d v_prod = _mm256_load_pd(parent_clv + i);
             v_prod = _mm256_mul_pd(v_prod, v_scale_factor);
@@ -302,22 +299,22 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
       lmat -= displacement;
       rmat -= displacement;
 
-      parent_clv += states_padded;
-      right_clv  += states_padded;
+      // parent_clv += states_padded;
+      // right_clv  += states_padded;
     }
 
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scale_mask == 0xF)
     {
-      parent_clv -= span_padded;
-      for (i = 0; i < span_padded; i += 4)
+      parent_clv -= span_padded - states_padded;
+      for (unsigned int i = 0; i < span_padded; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
         v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
-      parent_clv += span_padded;
+      parent_clv += span_padded - states_padded;
       parent_scaler[n] += 1;
     }
   }
@@ -354,18 +351,13 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
                                            unsigned int tipmap_size,
                                            unsigned int attrib)
 {
-  unsigned int states = 20;
-  unsigned int states_padded = states;
-  unsigned int maxstates = tipmap_size;
-  unsigned int i,j,k,n,m;
+  unsigned int const states = 20;
+  unsigned int const states_padded = states;
+  unsigned int const maxstates = tipmap_size;
 
   const double * lmat;
-  const double * rmat;
 
-  unsigned int span_padded = states_padded * rate_cats;
-  unsigned int lstate;
-
-  __m256d xmm0,xmm1,xmm2,xmm3;
+  unsigned int const span_padded = states_padded * rate_cats;
 
   /* precompute a lookup table of four values per entry (one for each state),
      for all 16 states (including ambiguities) and for each rate category. */
@@ -384,7 +376,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
   double * ptr = lookup;
 
   /* precompute left-side values and store them in lookup table */
-  for (j = 0; j < maxstates; ++j)
+  for (unsigned int j = 0; j < maxstates; ++j)
   {
     lmat = left_matrix;
 
@@ -398,9 +390,9 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
       /* special case for non-ambiguous states */
       int ss = PLL_CTZ32(state);
 
-      for (n = 0; n < rate_cats; ++n)
+      for (unsigned int n = 0; n < rate_cats; ++n)
       {
-        for (i = 0; i < states; ++i)
+        for (unsigned int i = 0; i < states; ++i)
         {
           ptr[i] = lmat[ss];
 
@@ -413,12 +405,12 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
     else if (scount == states)
     {
       /* special case for gaps */
-      for (n = 0; n < rate_cats; ++n)
+      for (unsigned int n = 0; n < rate_cats; ++n)
       {
-        for (i = 0; i < states; ++i)
+        for (unsigned int i = 0; i < states; ++i)
         {
           double terml = 0;
-          for (m = 0; m < states; ++m)
+          for (unsigned int m = 0; m < states; ++m)
           {
             terml += lmat[m];
           }
@@ -433,12 +425,12 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
     else
     {
       /* generic case for ambiguous states */
-      for (n = 0; n < rate_cats; ++n)
+      for (unsigned int n = 0; n < rate_cats; ++n)
       {
-        for (i = 0; i < states; ++i)
+        for (unsigned int i = 0; i < states; ++i)
         {
           double terml = 0;
-          for (m = 0; m < states; ++m)
+          for (unsigned int m = 0; m < states; ++m)
           {
             if ((state>>m) & 1)
             {
@@ -457,7 +449,6 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
 
   /* scaling-related stuff */
   unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
-  unsigned int scale_mask;
   unsigned int init_mask;
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
   __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
@@ -477,31 +468,40 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
     fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
   }
 
-  size_t displacement = (states_padded - states) * (states_padded);
+  size_t const displacement = (states_padded - states) * (states_padded);
+
+  double * orig_parent_clv = parent_clv;
+  double * orig_right_clv = right_clv;
 
   /* iterate over sites and compute CLV entries */
-  for (n = 0; n < sites; ++n)
+  #pragma omp parallel for private(parent_clv, right_clv)
+  for (unsigned int n = 0; n < sites; ++n)
   {
-    rmat = right_matrix;
+    const double * rmat = right_matrix;
 
-    scale_mask = init_mask;
+    unsigned int scale_mask = init_mask;
 
-    lstate = (unsigned int) left_tipchar[n];
+    unsigned int lstate = (unsigned int) left_tipchar[n];
 
     double * state_lookup = lookup + lstate*span_padded;
 
-    for (k = 0; k < rate_cats; ++k)
+    for (unsigned int k = 0; k < rate_cats; ++k)
     {
+      __m256d xmm0,xmm1,xmm2,xmm3;
+
+      parent_clv = orig_parent_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      right_clv = orig_right_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+
       unsigned int rate_mask = 0xF;
 
       __m256d v_rclv[5];
-      for (i = 0; i < 5; ++i)
+      for (unsigned int i = 0; i < 5; ++i)
       {
         v_rclv[i]    = _mm256_load_pd(right_clv + i*4);
       }
 
       /* iterate over quadruples of rows */
-      for (i = 0; i < states_padded; i += 4)
+      for (unsigned int i = 0; i < states_padded; i += 4)
       {
         __m256d v_termb0 = _mm256_setzero_pd();
         __m256d v_termb1 = _mm256_setzero_pd();
@@ -561,7 +561,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
          * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
         if (rate_mask == 0xF)
         {
-          for (i = 0; i < states_padded; i += 4)
+          for (unsigned int i = 0; i < states_padded; i += 4)
           {
             __m256d v_prod = _mm256_load_pd(parent_clv + i);
             v_prod = _mm256_mul_pd(v_prod, v_scale_factor);
@@ -578,8 +578,8 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
          even though the real matrix is states * states_padded */
       rmat -= displacement;
 
-      parent_clv += states_padded;
-      right_clv  += states_padded;
+      // parent_clv += states_padded;
+      // right_clv  += states_padded;
       state_lookup += states_padded;
     }
 
@@ -587,14 +587,14 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
        (all) entries by PLL_SCALE_FACTOR */
     if (scale_mask == 0xF)
     {
-      parent_clv -= span_padded;
-      for (i = 0; i < span_padded; i += 4)
+      parent_clv -= span_padded - states_padded;
+      for (unsigned int i = 0; i < span_padded; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
         v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
-      parent_clv += span_padded;
+      parent_clv += span_padded - states_padded;
       parent_scaler[n] += 1;
     }
   }
@@ -639,18 +639,12 @@ PLL_EXPORT void pll_core_update_partial_ii_20x20_avx2(unsigned int sites,
                                                 const unsigned int * right_scaler,
                                                 unsigned int attrib)
 {
-  unsigned int i,k,n;
-
-  const double * lmat;
-  const double * rmat;
-
-  unsigned int states = 20;
-  unsigned int states_padded = states;
-  unsigned int span_padded = states_padded * rate_cats;
+  unsigned int const states = 20;
+  unsigned int const states_padded = states;
+  unsigned int const span_padded = states_padded * rate_cats;
 
   /* scaling-related stuff */
   unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
-  unsigned int scale_mask;
   unsigned int init_mask;
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
   __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
@@ -670,29 +664,38 @@ PLL_EXPORT void pll_core_update_partial_ii_20x20_avx2(unsigned int sites,
     fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
   }
 
-  size_t displacement = (states_padded - states) * (states_padded);
+  size_t const displacement = (states_padded - states) * (states_padded);
+
+  double* orig_parent_clv = parent_clv;
+  double* orig_right_clv = right_clv;
+  double* orig_left_clv = left_clv;
 
   /* compute CLV */
-  for (n = 0; n < sites; ++n)
+  #pragma omp parallel for private(parent_clv, left_clv, right_clv)
+  for (unsigned int n = 0; n < sites; ++n)
   {
-    lmat = left_matrix;
-    rmat = right_matrix;
-    scale_mask = init_mask;
+    const double * lmat = left_matrix;
+    const double * rmat = right_matrix;
+    unsigned int scale_mask = init_mask;
 
-    for (k = 0; k < rate_cats; ++k)
+    for (unsigned int k = 0; k < rate_cats; ++k)
     {
+      parent_clv = orig_parent_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      left_clv = orig_left_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      right_clv = orig_right_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+
       unsigned int rate_mask = 0xF;
 
       __m256d v_lclv[5];
       __m256d v_rclv[5];
-      for (i = 0; i < 5; ++i)
+      for (unsigned int i = 0; i < 5; ++i)
       {
         v_lclv[i]    = _mm256_load_pd(left_clv + i*4);
         v_rclv[i]    = _mm256_load_pd(right_clv + i*4);
       }
 
       /* iterate over quadruples of rows */
-      for (i = 0; i < states_padded; i += 4)
+      for (unsigned int i = 0; i < states_padded; i += 4)
       {
         __m256d v_mat;
 
@@ -777,7 +780,7 @@ PLL_EXPORT void pll_core_update_partial_ii_20x20_avx2(unsigned int sites,
          * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
         if (rate_mask == 0xF)
         {
-          for (i = 0; i < states_padded; i += 4)
+          for (unsigned int i = 0; i < states_padded; i += 4)
           {
             __m256d v_prod = _mm256_load_pd(parent_clv + i);
             v_prod = _mm256_mul_pd(v_prod, v_scale_factor);
@@ -795,23 +798,23 @@ PLL_EXPORT void pll_core_update_partial_ii_20x20_avx2(unsigned int sites,
       lmat -= displacement;
       rmat -= displacement;
 
-      parent_clv += states_padded;
-      left_clv   += states_padded;
-      right_clv  += states_padded;
+      // parent_clv += states_padded;
+      // left_clv   += states_padded;
+      // right_clv  += states_padded;
     }
 
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scale_mask == 0xF)
     {
-      parent_clv -= span_padded;
-      for (i = 0; i < span_padded; i += 4)
+      parent_clv -= span_padded - states_padded;
+      for (unsigned int i = 0; i < span_padded; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
         v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
-      parent_clv += span_padded;
+      parent_clv += span_padded - states_padded;
       parent_scaler[n] += 1;
     }
   }
@@ -830,13 +833,8 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
                                                 const unsigned int * right_scaler,
                                                 unsigned int attrib)
 {
-  unsigned int i,j,k,n;
-
-  const double * lmat;
-  const double * rmat;
-
-  unsigned int states_padded = (states+3) & 0xFFFFFFFC;
-  unsigned int span_padded = states_padded * rate_cats;
+  unsigned int const states_padded = (states+3) & 0xFFFFFFFC;
+  unsigned int const span_padded = states_padded * rate_cats;
 
   /* dedicated functions for 4x4 and 20x20 matrices */
   if (states == 4)
@@ -873,7 +871,6 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
 
   /* scaling-related stuff */
   unsigned int scale_mode;  /* 0 = none, 1 = per-site, 2 = per-rate */
-  unsigned int scale_mask;
   unsigned int init_mask;
   __m256d v_scale_threshold = _mm256_set1_pd(PLL_SCALE_THRESHOLD);
   __m256d v_scale_factor = _mm256_set1_pd(PLL_SCALE_FACTOR);
@@ -893,21 +890,30 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
     fill_parent_scaler(scaler_size, parent_scaler, left_scaler, right_scaler);
   }
 
-  size_t displacement = (states_padded - states) * (states_padded);
+  size_t const displacement = (states_padded - states) * (states_padded);
+
+  double* orig_parent_clv = parent_clv;
+  double* orig_right_clv = right_clv;
+  double* orig_left_clv = left_clv;
 
   /* compute CLV */
-  for (n = 0; n < sites; ++n)
+  #pragma omp parallel for private(parent_clv, left_clv, right_clv)
+  for (unsigned int n = 0; n < sites; ++n)
   {
-    lmat = left_matrix;
-    rmat = right_matrix;
-    scale_mask = init_mask;
+    const double * lmat = left_matrix;
+    const double * rmat = right_matrix;
+    unsigned int scale_mask = init_mask;
 
-    for (k = 0; k < rate_cats; ++k)
+    for (unsigned int k = 0; k < rate_cats; ++k)
     {
+      parent_clv = orig_parent_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      left_clv = orig_left_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+      right_clv = orig_right_clv + (n * rate_cats * states_padded ) + (k * states_padded);
+
       unsigned int rate_mask = 0xF;
 
       /* iterate over quadruples of rows */
-      for (i = 0; i < states_padded; i += 4)
+      for (unsigned int i = 0; i < states_padded; i += 4)
       {
         __m256d v_terma0 = _mm256_setzero_pd();
         __m256d v_termb0 = _mm256_setzero_pd();
@@ -935,7 +941,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
         const double * rm3 = rm2 + states_padded;
 
         /* iterate over quadruples of columns */
-        for (j = 0; j < states_padded; j += 4)
+        for (unsigned int j = 0; j < states_padded; j += 4)
         {
           v_lclv    = _mm256_load_pd(left_clv+j);
           v_rclv    = _mm256_load_pd(right_clv+j);
@@ -1029,7 +1035,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
          * the threshold then scale (all) entries by PLL_SCALE_FACTOR */
         if (rate_mask == 0xF)
         {
-          for (i = 0; i < states_padded; i += 4)
+          for (unsigned int i = 0; i < states_padded; i += 4)
           {
             __m256d v_prod = _mm256_load_pd(parent_clv + i);
             v_prod = _mm256_mul_pd(v_prod, v_scale_factor);
@@ -1047,23 +1053,23 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
       lmat -= displacement;
       rmat -= displacement;
 
-      parent_clv += states_padded;
-      left_clv   += states_padded;
-      right_clv  += states_padded;
+      // parent_clv += states_padded;
+      // left_clv   += states_padded;
+      // right_clv  += states_padded;
     }
 
     /* if *all* entries of the site CLV were below the threshold then scale
        (all) entries by PLL_SCALE_FACTOR */
     if (scale_mask == 0xF)
     {
-      parent_clv -= span_padded;
-      for (i = 0; i < span_padded; i += 4)
+      parent_clv -= span_padded - states_padded;
+      for (unsigned int i = 0; i < span_padded; i += 4)
       {
         __m256d v_prod = _mm256_load_pd(parent_clv + i);
         v_prod = _mm256_mul_pd(v_prod,v_scale_factor);
         _mm256_store_pd(parent_clv + i, v_prod);
       }
-      parent_clv += span_padded;
+      parent_clv += span_padded - states_padded;
       parent_scaler[n] += 1;
     }
   }
