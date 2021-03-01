@@ -792,6 +792,16 @@ PLL_EXPORT void pll_update_partials(pll_partition_t * partition,
                                     const pll_operation_t * operations,
                                     unsigned int count);
 
+PLL_EXPORT void pll_update_partials_single(pll_partition_t * partition,
+                                    const pll_operation_t * op,
+                                    unsigned int update_repeats,
+                                    double* parent_clv,
+                                    double* left_clv,
+                                    double* right_clv,
+                                    unsigned int* parent_scaler,
+                                    unsigned int* left_scaler,
+                                    unsigned int* right_scaler);
+
 PLL_EXPORT void pll_update_partials_rep(pll_partition_t * partition,
                                         const pll_operation_t * operations,
                                         unsigned int count,
