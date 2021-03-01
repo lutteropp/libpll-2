@@ -751,7 +751,8 @@ PLL_EXPORT void pll_aligned_free(void * ptr);
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  unsigned int clv_index,
-                                                 int scaler_index,
+                                                 double* clv_entry,
+                                                 unsigned int* scaler,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl);
 

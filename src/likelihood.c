@@ -121,18 +121,13 @@ static double root_loglikelihood_asc_bias(pll_partition_t * partition,
 
 PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
                                                  unsigned int clv_index,
-                                                 int scaler_index,
+                                                 double* clv_entry,
+                                                 unsigned int* scaler,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl)
 {
   double logl = 0;
-  unsigned int * scaler;
   unsigned int identifiers;
-  /* get scaler array if specified */
-  if (scaler_index == PLL_SCALE_BUFFER_NONE)
-    scaler = NULL;
-  else
-    scaler = partition->scale_buffer[scaler_index];
 
   /* compute log-likelihood via the core function */
   if (pll_repeats_enabled(partition) &&
@@ -141,7 +136,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
     logl = pll_core_root_loglikelihood_repeats(partition->states,
                                      partition->sites,
                                      partition->rate_cats,
-                                     partition->clv[clv_index],
+                                     clv_entry,
                                      partition->repeats->pernode_site_id[clv_index],
                                      scaler,
                                      partition->frequencies,
@@ -159,7 +154,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
     logl = pll_core_root_loglikelihood(partition->states,
                                      partition->sites,
                                      partition->rate_cats,
-                                     partition->clv[clv_index],
+                                     clv_entry,
                                      scaler,
                                      partition->frequencies,
                                      partition->rate_weights,
