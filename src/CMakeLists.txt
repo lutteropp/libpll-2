@@ -2,11 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 
 include(CheckIncludeFile) 
 
-set (LIBPLL_BASE_FLAGS "-Wall -Wsign-compare -D_GNU_SOURCE -O3 -fPIC ")
-
-if(USE_OPENMP)
-  set(LIBPLL_BASE_FLAGS "${LIBPLL_BASE_FLAGS} -fopenmp")
-endif()
+set (LIBPLL_BASE_FLAGS "-Wall -Wsign-compare -D_GNU_SOURCE -O3 -fPIC -fopenmp -march=native ")
 
 if(PLLMOD_DEBUG)
   set(LIBPLL_BASE_FLAGS "${LIBPLL_BASE_FLAGS} -DDEBUG")
