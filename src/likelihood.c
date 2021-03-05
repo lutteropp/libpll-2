@@ -119,7 +119,77 @@ static double root_loglikelihood_asc_bias(pll_partition_t * partition,
    return logl;
 }
 
-PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
+
+PLL_EXPORT double pll_compute_root_loglikelihood_old(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 const unsigned int * freqs_indices,
+                                                 double * persite_lnl)
+{
+  double logl = 0;
+  unsigned int * scaler;
+  unsigned int identifiers;
+  /* get scaler array if specified */
+  if (scaler_index == PLL_SCALE_BUFFER_NONE)
+    scaler = NULL;
+  else
+    scaler = partition->scale_buffer[scaler_index];
+
+  /* compute log-likelihood via the core function */
+  if (pll_repeats_enabled(partition) &&
+      partition->repeats->pernode_ids[clv_index]) 
+  {
+    logl = pll_core_root_loglikelihood_repeats(partition->states,
+                                     partition->sites,
+                                     partition->rate_cats,
+                                     partition->clv[clv_index],
+                                     partition->repeats->pernode_site_id[clv_index],
+                                     scaler,
+                                     partition->frequencies,
+                                     partition->rate_weights,
+                                     partition->pattern_weights,
+                                     partition->prop_invar,
+                                     partition->invariant,
+                                     freqs_indices,
+                                     persite_lnl,
+                                     partition->attributes);
+  }
+  else
+  {
+    /* compute log-likelihood via the core function */
+    logl = pll_core_root_loglikelihood(partition->states,
+                                     partition->sites,
+                                     partition->rate_cats,
+                                     partition->clv[clv_index],
+                                     scaler,
+                                     partition->frequencies,
+                                     partition->rate_weights,
+                                     partition->pattern_weights,
+                                     partition->prop_invar,
+                                     partition->invariant,
+                                     freqs_indices,
+                                     persite_lnl,
+                                     partition->attributes);
+  }
+
+  /* ascertainment bias correction */
+  if (partition->attributes & PLL_ATTRIB_AB_MASK)
+  {
+    /* Note the assertion must be done for all rate matrices
+    assert(prop_invar == 0);
+    */
+    identifiers = pll_get_sites_number(partition, clv_index) - partition->rate_cats;
+    logl += root_loglikelihood_asc_bias(partition,
+                                        identifiers,
+                                        partition->clv[clv_index],
+                                        scaler,
+                                        freqs_indices);
+  }
+
+  return logl;
+}
+
+PLL_EXPORT double pll_compute_root_loglikelihood_new(pll_partition_t * partition,
                                                  unsigned int clv_index,
                                                  double* clv_entry,
                                                  unsigned int* scaler,

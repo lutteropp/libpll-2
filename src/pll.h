@@ -749,7 +749,13 @@ PLL_EXPORT void pll_aligned_free(void * ptr);
 
 /* functions in likelihood.c */
 
-PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
+PLL_EXPORT double pll_compute_root_loglikelihood_old(pll_partition_t * partition,
+                                                 unsigned int clv_index,
+                                                 int scaler_index,
+                                                 const unsigned int * freqs_indices,
+                                                 double * persite_lnl);
+
+PLL_EXPORT double pll_compute_root_loglikelihood_new(pll_partition_t * partition,
                                                  unsigned int clv_index,
                                                  double* clv_entry,
                                                  unsigned int* scaler,
@@ -802,6 +808,11 @@ PLL_EXPORT void pll_update_partials_single(pll_partition_t * partition,
                                     unsigned int* parent_scaler,
                                     unsigned int* left_scaler,
                                     unsigned int* right_scaler);
+
+PLL_EXPORT void pll_update_partials_rep_old(pll_partition_t * partition,
+                                        const pll_operation_t * operations,
+                                        unsigned int count,
+                                        unsigned int update_repeats);
 
 PLL_EXPORT void pll_update_partials_rep(pll_partition_t * partition,
                                         const pll_operation_t * operations,
