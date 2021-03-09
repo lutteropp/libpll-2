@@ -185,6 +185,7 @@ PLL_EXPORT double pll_compute_root_loglikelihood(pll_partition_t * partition,
 
 static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
                                              unsigned int parent_clv_index,
+                                             double* parent_clv_vector,
                                              unsigned int * parent_scaler,
                                              unsigned int matrix_index,
                                              const unsigned int * freqs_indices)
@@ -194,7 +195,7 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
   double terma, terma_r;
   double site_lk;
 
-  const double * clvp = partition->clv[parent_clv_index];
+  const double * clvp = parent_clv_vector;
   const double * freqs = NULL;
   const double * pmatrix = partition->pmatrix[matrix_index];
   unsigned int states = partition->states;
@@ -264,8 +265,10 @@ static double edge_loglikelihood_asc_bias_ti(pll_partition_t * partition,
 
 static double edge_loglikelihood_tipinner(pll_partition_t * partition,
                                           unsigned int parent_clv_index,
-                                          int parent_scaler_index,
+                                          double* parent_clv_vector,
+                                          unsigned int* parent_scaler,
                                           unsigned int child_clv_index,
+                                          double* child_clv_vector,
                                           unsigned int matrix_index,
                                           const unsigned int * freqs_indices,
                                           double * persite_lnl)
@@ -273,18 +276,11 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
   double logl = 0;
   unsigned int states = partition->states;
 
-  unsigned int * parent_scaler;
-
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
-
   if (states == 4)
   {
     logl = pll_core_edge_loglikelihood_ti_4x4(partition->sites,
                                               partition->rate_cats,
-                                              partition->clv[parent_clv_index],
+                                              parent_clv_vector,
                                               parent_scaler,
                                               partition->tipchars[child_clv_index],
                                               partition->pmatrix[matrix_index],
@@ -302,7 +298,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
     logl = pll_core_edge_loglikelihood_ti(partition->states,
                                           partition->sites,
                                           partition->rate_cats,
-                                          partition->clv[parent_clv_index],
+                                          parent_clv_vector,
                                           parent_scaler,
                                           partition->tipchars[child_clv_index],
                                           partition->tipmap,
@@ -326,6 +322,7 @@ static double edge_loglikelihood_tipinner(pll_partition_t * partition,
     */
     logl += edge_loglikelihood_asc_bias_ti(partition,
                                            parent_clv_index,
+                                           parent_clv_vector,
                                            parent_scaler,
                                            matrix_index,
                                            freqs_indices);
@@ -436,30 +433,19 @@ static double edge_loglikelihood_asc_bias_ii(pll_partition_t * partition,
 
 static double edge_loglikelihood(pll_partition_t * partition,
                                  unsigned int parent_clv_index,
-                                 int parent_scaler_index,
+                                 double* parent_clv_vector,
+                                 unsigned int* parent_scaler,
                                  unsigned int child_clv_index,
-                                 int child_scaler_index,
+                                 double* child_clv_vector,
+                                 unsigned int* child_scaler,
                                  unsigned int matrix_index,
                                  const unsigned int * freqs_indices,
                                  double * persite_lnl)
 {
   double logl = 0;
 
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
-
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
-
-  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
-  else
-    child_scaler = partition->scale_buffer[child_scaler_index];
-
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
+  const double * clvp = parent_clv_vector;
+  const double * clvc = child_clv_vector;
 
   /* compute log-likelihood via the core function */
   logl = pll_core_edge_loglikelihood_ii(partition->states,
@@ -500,17 +486,19 @@ static double edge_loglikelihood(pll_partition_t * partition,
 
 static double edge_loglikelihood_repeats(pll_partition_t * partition,
                                  unsigned int parent_clv_index,
-                                 int parent_scaler_index,
+                                 double* parent_clv_vector,
+                                 unsigned int* parent_scaler,
                                  unsigned int child_clv_index,
-                                 int child_scaler_index,
+                                 double* child_clv_vector,
+                                 unsigned int* child_scaler,
                                  unsigned int matrix_index,
                                  const unsigned int * freqs_indices,
                                  double * persite_lnl)
 {
   double logl = 0;
 
-  const double * clvp = partition->clv[parent_clv_index];
-  const double * clvc = partition->clv[child_clv_index];
+  const double * clvp = parent_clv_vector;
+  const double * clvc = child_clv_vector;
 
   const unsigned int * parent_site_id =
     pll_get_site_id(partition, parent_clv_index);
@@ -521,19 +509,6 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
   unsigned int child_sites = 
     pll_get_sites_number(partition, child_clv_index);
   unsigned int inv = parent_sites > child_sites;
-  
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
-
-  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
-  else
-    child_scaler = partition->scale_buffer[child_scaler_index];
-
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
 
   /* compute log-likelihood via the core function */
   logl = pll_core_edge_loglikelihood_repeats(partition->states,
@@ -577,12 +552,13 @@ static double edge_loglikelihood_repeats(pll_partition_t * partition,
 }
 
 
-
 PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                                  unsigned int parent_clv_index,
-                                                 int parent_scaler_index,
+                                                 double* parent_clv_vector,
+                                                 unsigned int* parent_scaler,
                                                  unsigned int child_clv_index,
-                                                 int child_scaler_index,
+                                                 double* child_clv_vector,
+                                                 unsigned int* child_scaler,
                                                  unsigned int matrix_index,
                                                  const unsigned int * freqs_indices,
                                                  double * persite_lnl)
@@ -595,9 +571,11 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
   {
     return edge_loglikelihood_repeats(partition,
                             parent_clv_index,
-                            parent_scaler_index,
+                            parent_clv_vector,
+                            parent_scaler,
                             child_clv_index,
-                            child_scaler_index,
+                            child_clv_vector,
+                            child_scaler,
                             matrix_index,
                             freqs_indices,
                             persite_lnl);
@@ -611,18 +589,24 @@ PLL_EXPORT double pll_compute_edge_loglikelihood(pll_partition_t * partition,
                                         (parent_clv_index < partition->tips) ?
                                             child_clv_index : parent_clv_index,
                                         (parent_clv_index < partition->tips) ?
-                                            child_scaler_index : parent_scaler_index,
+                                            child_clv_vector : parent_clv_vector,
+                                        (parent_clv_index < partition->tips) ?
+                                            child_scaler : parent_scaler,
                                         (parent_clv_index < partition->tips) ?
                                             parent_clv_index : child_clv_index,
+                                        (parent_clv_index < partition->tips) ?
+                                            parent_clv_vector : child_clv_vector,
                                         matrix_index,
                                         freqs_indices,
                                         persite_lnl);
 
   logl = edge_loglikelihood(partition,
                             parent_clv_index,
-                            parent_scaler_index,
+                            parent_clv_vector,
+                            parent_scaler,
                             child_clv_index,
-                            child_scaler_index,
+                            child_clv_vector,
+                            child_scaler,
                             matrix_index,
                             freqs_indices,
                             persite_lnl);
