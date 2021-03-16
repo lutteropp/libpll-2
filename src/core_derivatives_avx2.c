@@ -1805,13 +1805,13 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
 
         if (f)
         {
-          v_f = _mm256_fmadd_pd (v_term0, v_patw, v_f);
           /* substitute for _mm256_log_pd */
-          _mm256_store_pd(logbuffer, v_f);
+          _mm256_store_pd(logbuffer, v_term0);
           for (j = 0; j < 4; ++j) {
             logbuffer[j] = log(logbuffer[j]);
           }
-          v_f = _mm256_load_pd(logbuffer);
+          __m256d v_log_term0 = _mm256_load_pd(logbuffer);
+          v_f = _mm256_add_pd (v_f, _mm256_mul_pd(v_log_term0, v_patw));
         }
 
         v_df = _mm256_fnmadd_pd (v_deriv1, v_patw, v_df);
