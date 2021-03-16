@@ -23,7 +23,9 @@
 
 static int sumtable_tipinner(pll_partition_t * partition,
                              unsigned int parent_clv_index,
+                             double * parent_clv_vector,
                              unsigned int child_clv_index,
+                             double * child_clv_vector,
                              const unsigned int * parent_scaler,
                              const unsigned int * child_scaler,
                              const unsigned int * params_indices,
@@ -81,7 +83,7 @@ static int sumtable_tipinner(pll_partition_t * partition,
   retval = pll_core_update_sumtable_ti(partition->states,
                                        sites,
                                        partition->rate_cats,
-                                       partition->clv[inner_clv_index],
+                                       (inner_clv_index == parent_clv_index) ? parent_clv_vector : child_clv_vector,
                                        partition->tipchars[tip_clv_index],
                                        scaler,
                                        eigenvecs,
@@ -101,7 +103,9 @@ static int sumtable_tipinner(pll_partition_t * partition,
 
 static int sumtable_innerinner(pll_partition_t * partition,
                                 unsigned int parent_clv_index,
+                                double * parent_clv_vector,
                                 unsigned int child_clv_index,
+                                double * child_clv_vector,
                                 const unsigned int * parent_scaler,
                                 const unsigned int * child_scaler,
                                 const unsigned int * params_indices,
@@ -142,8 +146,8 @@ static int sumtable_innerinner(pll_partition_t * partition,
   retval = pll_core_update_sumtable_ii(partition->states,
                                        sites,
                                        partition->rate_cats,
-                                       partition->clv[parent_clv_index],
-                                       partition->clv[child_clv_index],
+                                       parent_clv_vector,
+                                       child_clv_vector,
                                        parent_scaler,
                                        child_scaler,
                                        eigenvecs,
@@ -161,7 +165,9 @@ static int sumtable_innerinner(pll_partition_t * partition,
 
 static int sumtable_repeats(pll_partition_t * partition,
                                 unsigned int parent_clv_index,
+                                double * parent_clv_vector,
                                 unsigned int child_clv_index,
+                                double * child_clv_vector,
                                 const unsigned int * parent_scaler,
                                 const unsigned int * child_scaler,
                                 const unsigned int * params_indices,
@@ -212,8 +218,8 @@ static int sumtable_repeats(pll_partition_t * partition,
                         sites,
                         inv ? child_ids : parent_ids,
                         partition->rate_cats,
-                        partition->clv[inv ? child_clv_index : parent_clv_index],
-                        partition->clv[!inv ? child_clv_index : parent_clv_index],
+                        inv ? child_clv_vector : parent_clv_vector,
+                        !inv ? child_clv_vector : parent_clv_vector,
                         inv ? child_scaler : parent_scaler,
                         !inv ? child_scaler : parent_scaler,
                         eigenvecs,
@@ -236,30 +242,18 @@ static int sumtable_repeats(pll_partition_t * partition,
 /* computes the table containing the constant parts of the likelihood function
  * partial derivatives on the branch lengths.
  * sumtable: [output] must be allocated for storing (rates x states_padded) values */
+
 PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       unsigned int parent_clv_index,
+                                      double * parent_clv_vector,
                                       unsigned int child_clv_index,
-                                      int parent_scaler_index,
-                                      int child_scaler_index,
+                                      double * child_clv_vector,
+                                      unsigned int * parent_scaler,
+                                      unsigned int * child_scaler,
                                       const unsigned int * params_indices,
                                       double *sumtable)
 {
   int retval;
-
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
-
-  /* get parent scaler */
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
-
-  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
-  else
-    child_scaler = partition->scale_buffer[child_scaler_index];
-
 
   if (pll_repeats_enabled(partition) && 
       (partition->repeats->pernode_ids[parent_clv_index] 
@@ -267,7 +261,9 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
   {
     retval = sumtable_repeats(partition,
                                  parent_clv_index,
+                                 parent_clv_vector,
                                  child_clv_index,
+                                 child_clv_vector,
                                  parent_scaler,
                                  child_scaler,
                                  params_indices,
@@ -290,7 +286,9 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
       /* tip-inner */
       retval = sumtable_tipinner(partition,
                                  parent_clv_index,
+                                 parent_clv_vector,
                                  child_clv_index,
+                                 child_clv_vector,
                                  parent_scaler,
                                  child_scaler,
                                  params_indices,
@@ -301,7 +299,9 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
       /* inner-inner */
       retval = sumtable_innerinner(partition,
                                    parent_clv_index,
+                                   parent_clv_vector,
                                    child_clv_index,
+                                   child_clv_vector,
                                    parent_scaler,
                                    child_scaler,
                                    params_indices,
@@ -313,7 +313,9 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
     /* inner-inner */
     retval = sumtable_innerinner(partition,
                                  parent_clv_index,
+                                 parent_clv_vector,
                                  child_clv_index,
+                                 child_clv_vector,
                                  parent_scaler,
                                  child_scaler,
                                  params_indices,
@@ -332,15 +334,15 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
  */
 PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   int parent_scaler_index,
+                                                  unsigned int * parent_scaler,
                                                   int child_scaler_index,
+                                                  unsigned int * child_scaler,
                                                   double branch_length,
                                                   const unsigned int * params_indices,
                                                   const double * sumtable,
                                                   double * d_f,
                                                   double * dd_f)
 {
-  unsigned int * parent_scaler;
-  unsigned int * child_scaler;
   unsigned int i;
   unsigned int rate_cats = partition->rate_cats;
 
@@ -364,18 +366,6 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
     freqs[i]      = partition->frequencies[params_indices[i]];
     prop_invar[i] = partition->prop_invar[params_indices[i]];
   }
-
-  /* get parent scaler */
-  if (parent_scaler_index == PLL_SCALE_BUFFER_NONE)
-    parent_scaler = NULL;
-  else
-    parent_scaler = partition->scale_buffer[parent_scaler_index];
-
-  if (child_scaler_index == PLL_SCALE_BUFFER_NONE)
-    child_scaler = NULL;
-  else
-    child_scaler = partition->scale_buffer[child_scaler_index];
-
 
   unsigned int parent_ids = partition->sites;
   unsigned int child_ids = partition->sites;
