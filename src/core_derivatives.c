@@ -939,7 +939,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
           /* derivatives of log(sum Li(s) over states 's') */
           *d_f  -= sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
           *dd_f -= sum_w_inv *
-               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /logLK
+               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
                (asc_Lk[0] * asc_Lk[0]));
         break;
         default:
