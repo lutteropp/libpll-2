@@ -340,6 +340,7 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   double branch_length,
                                                   const unsigned int * params_indices,
                                                   const double * sumtable,
+                                                  double * f,
                                                   double * d_f,
                                                   double * dd_f)
 {
@@ -396,6 +397,7 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                partition->rates,
                                                eigenvals,
                                                sumtable,
+                                               f,
                                                d_f,
                                                dd_f,
                                                partition->attributes);

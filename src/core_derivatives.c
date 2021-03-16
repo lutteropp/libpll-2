@@ -709,6 +709,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                const double * rates,
                                                double * const * eigenvals,
                                                const double * sumtable,
+                                               double * f,
                                                double * d_f,
                                                double * dd_f,
                                                unsigned int attrib)
@@ -741,6 +742,10 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
     ef_sites = sites;
   }
 
+  if (f) 
+  {
+    *f = 0.0;
+  }
   *d_f = 0.0;
   *dd_f = 0.0;
 
@@ -795,6 +800,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                         freqs,
                                         sumtable,
                                         diagptable,
+                                        f,
                                         d_f,
                                         dd_f);
   }
@@ -816,6 +822,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                         freqs,
                                         sumtable,
                                         diagptable,
+                                        f,
                                         d_f,
                                         dd_f);
   }
@@ -839,6 +846,14 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
 
       invariant_ptr++;
       sum += rate_cats * states_padded;
+
+      if (f) {
+        *f += pattern_weights[n] * log(site_lk[0]);
+        if (scale_factors)
+        {
+          *f += scale_factors * log(PLL_SCALE_THRESHOLD);
+        }
+      }
 
       /* build derivatives */
       deriv1 = (-site_lk[1] / site_lk[0]);
@@ -901,6 +916,12 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
           for (n = 0; n < ef_sites; ++n)
             pattern_weight_sum += pattern_weights[n];
 
+          if (f)
+          {       
+            /* correct log-likelihood */
+            *f += pattern_weight_sum * log(1.0 - asc_Lk[0]);
+          }
+
           /* derivatives of log(1.0 - (sum Li(s) over states 's')) */
           *d_f  += pattern_weight_sum * (asc_Lk[1] / (asc_Lk[0] - 1.0));
           *dd_f += pattern_weight_sum *
@@ -909,10 +930,16 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
         }
         break;
         case PLL_ATTRIB_AB_FELSENSTEIN:
+          /* correct log-likelihood */
+          if (f)
+          {
+            *f -= sum_w_inv * log(asc_Lk[0]);
+          }
+
           /* derivatives of log(sum Li(s) over states 's') */
           *d_f  -= sum_w_inv * (asc_Lk[1] / asc_Lk[0]);
           *dd_f -= sum_w_inv *
-               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /
+               (((asc_Lk[2] * asc_Lk[0]) - asc_Lk[1] * asc_Lk[1]) /logLK
                (asc_Lk[0] * asc_Lk[0]));
         break;
         default:

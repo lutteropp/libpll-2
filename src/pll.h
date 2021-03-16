@@ -830,6 +830,7 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   double branch_length,
                                                   const unsigned int * params_indices,
                                                   const double * sumtable,
+                                                  double * f,
                                                   double * d_f,
                                                   double * dd_f);
 
@@ -1253,6 +1254,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                const double * rates,
                                                double * const * eigenvals,
                                                const double * sumtable,
+                                               double * f,
                                                double * d_f,
                                                double * dd_f,
                                                unsigned int attrib);
@@ -1844,6 +1846,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
                                                    double * const * freqs,
                                                    const double * sumtable,
                                                    const double * diagptable,
+                                                   double * f,
                                                    double * d_f,
                                                    double * dd_f);
 
@@ -1943,6 +1946,7 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
                                          double * const * freqs,
                                          const double * sumtable,
                                          const double * diagptable,
+                                         double * f,
                                          double * d_f,
                                          double * dd_f);
 
