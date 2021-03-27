@@ -1551,11 +1551,6 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
                                          double * d_f,
                                          double * dd_f)
 {
-  if (f)
-  {
-    snprintf(pll_errmsg, 200, "AVX2 vectorization for tree loglikelihood out of sumtable not implemented yet");
-    return PLL_FAILURE;
-  }
 
   unsigned int i,j,k,n;
   unsigned int span_padded = rate_cats * states_padded;
