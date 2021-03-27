@@ -848,7 +848,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
       sum += rate_cats * states_padded;
 
       if (f) {
-        *f += pattern_weights[n] * log(site_lk[0]);
+        *f += log(site_lk[0]);
         if (scale_factors)
         {
           *f += scale_factors * log(PLL_SCALE_THRESHOLD);

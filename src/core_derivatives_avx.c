@@ -1909,7 +1909,7 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
       if (f)
       {
         double deriv0 = log(site_lk[offset]);
-        *f += pattern_weights[n] * deriv0;
+        *f += deriv0;
       }
     }
 
