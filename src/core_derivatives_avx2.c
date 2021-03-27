@@ -1835,7 +1835,7 @@ int pll_core_likelihood_derivatives_avx2(unsigned int states,
     if (f)
     {
       double deriv0 = log(site_lk[offset]);
-      *f += deriv0;
+      *f += pattern_weights[n] * deriv0;
     }
   }
 
