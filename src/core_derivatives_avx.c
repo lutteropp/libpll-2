@@ -1710,9 +1710,15 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
   double logbuffer[16] __attribute__( ( aligned ( PLL_ALIGNMENT_AVX ) ) ) ;
 
   __m256d v_f;
+  __m256d add_logval;
   if (f)
   { /* vector for accumulating 0th derivative */
     v_f = _mm256_setzero_pd ();
+    if (eq_weights) 
+    {
+      double logval = log(rate_weights[0]);
+      add_logval = _mm256_set1_pd(logval);
+    }
   }
 
   /* vectors for accumulating 1st and 2nd derivatives */
@@ -1862,6 +1868,10 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
             logbuffer[j] = log(logbuffer[j]);
           }
           __m256d v_log_term0 = _mm256_load_pd(logbuffer);
+          if (eq_weights)
+          {
+            v_log_term0 = _mm256_add_pd (v_log_term0, add_logval);
+          }
 
           v_f = _mm256_add_pd (v_f, v_log_term0);
         }
@@ -1881,6 +1891,10 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
             logbuffer[j] = log(logbuffer[j]);
           }
           __m256d v_log_term0 = _mm256_load_pd(logbuffer);
+          if (eq_weights)
+          {
+            v_log_term0 = _mm256_add_pd (v_log_term0, add_logval);
+          }
           v_f = _mm256_add_pd (v_f, _mm256_mul_pd(v_log_term0, v_patw));
         }
         v_df = _mm256_sub_pd (v_df, _mm256_mul_pd(v_deriv1, v_patw));
@@ -1909,6 +1923,9 @@ PLL_EXPORT int pll_core_likelihood_derivatives_avx(unsigned int states,
       if (f)
       {
         double deriv0 = log(site_lk[offset]);
+        if (eq_weights) {
+          deriv0 += log(rate_weights[0]);
+        }
         *f += pattern_weights[n] * deriv0;
       }
     }
