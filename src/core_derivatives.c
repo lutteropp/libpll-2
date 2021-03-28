@@ -741,7 +741,6 @@ PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
                                                const double * prop_invar,
                                                double * const * freqs,
                                                const double * rates,
-                                               double * const * eigenvals,
                                                const double * sumtable,
                                                double * f,
                                                double * d_f,
@@ -756,7 +755,6 @@ PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
   double deriv1, deriv2;
   double site_lk[3];
 
-  const double * t_eigenvals;
   double t_branch_length;
   unsigned int scale_factors;
 

@@ -325,6 +325,27 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
   return retval;
 }
 
+PLL_EXPORT void pll_compute_eigenvals_and_prop_invar(pll_partition_t * partition, const unsigned int * params_indices, double ** eigenvals, double * prop_invar)
+{
+  unsigned int rate_cats = partition->rate_cats;
+  eigenvals = (double **) malloc(rate_cats * sizeof(double *));
+  prop_invar = (double *)  malloc(rate_cats * sizeof(double));
+  if (!eigenvals || !prop_invar)
+  {
+    if (eigenvals) free(eigenvals);
+    if (prop_invar) free(prop_invar);
+
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf(pll_errmsg, 200, "Unable to allocate enough memory.");
+    return PLL_FAILURE;
+  }
+  for (unsigned int i=0; i<rate_cats; ++i)
+  {
+    eigenvals[i]  = partition->eigenvals[params_indices[i]];
+    prop_invar[i] = partition->prop_invar[params_indices[i]];
+  }
+}
+
 /* Computes partial derivatives on the branch lengths.
  * branch_length: [input] value where the derivative is computed
  * sumtable: [input] must be computed at the edge where the derivatives will
@@ -344,18 +365,15 @@ PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition
                                                   double * f,
                                                   double * d_f,
                                                   double * dd_f,
-                                                  double * diagptable)
+                                                  double * diagptable,
+                                                  double * prop_invar)
 {
   unsigned int i;
   unsigned int rate_cats = partition->rate_cats;
 
-  double ** eigenvals = (double **) malloc(rate_cats * sizeof(double *));
   double ** freqs     = (double **) malloc(rate_cats * sizeof(double *));
-  double * prop_invar = (double *)  malloc(rate_cats * sizeof(double));
-  if (!eigenvals || !prop_invar || !freqs)
+  if (!freqs)
   {
-    if (eigenvals) free(eigenvals);
-    if (prop_invar) free(prop_invar);
     if (freqs) free(freqs);
 
     pll_errno = PLL_ERROR_MEM_ALLOC;
@@ -365,9 +383,7 @@ PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition
 
   for (i=0; i<rate_cats; ++i)
   {
-    eigenvals[i]  = partition->eigenvals[params_indices[i]];
     freqs[i]      = partition->frequencies[params_indices[i]];
-    prop_invar[i] = partition->prop_invar[params_indices[i]];
   }
 
   unsigned int parent_ids = partition->sites;
@@ -397,7 +413,6 @@ PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition
                                                prop_invar,
                                                freqs,
                                                partition->rates,
-                                               eigenvals,
                                                sumtable,
                                                f,
                                                d_f,
@@ -406,8 +421,6 @@ PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition
                                                diagptable);
 
   free (freqs);
-  free (prop_invar);
-  free (eigenvals);
 
   return retval;
 }

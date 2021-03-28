@@ -833,7 +833,8 @@ PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition
                                                   double * f,
                                                   double * d_f,
                                                   double * dd_f,
-                                                  double * diagptable);
+                                                  double * diagptable,
+                                                  double * prop_invar);
 
 /* functions in gamma.c */
 
@@ -1260,7 +1261,6 @@ PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
                                                const double * prop_invar,
                                                double * const * freqs,
                                                const double * rates,
-                                               double * const * eigenvals,
                                                const double * sumtable,
                                                double * f,
                                                double * d_f,
