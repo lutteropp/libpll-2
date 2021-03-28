@@ -125,7 +125,7 @@ PLL_EXPORT void pll_core_update_partial_ti_avx2(unsigned int states,
   double* orig_right_clv = right_clv;
 
   /* compute CLV */
-  #pragma omp parallel for private(parent_clv, right_clv)
+  //#pragma omp parallel for private(parent_clv, right_clv)
   for (unsigned int n = 0; n < sites; ++n)
   {
     const double * lmat = left_matrix;
@@ -474,7 +474,7 @@ void pll_core_update_partial_ti_20x20_avx2(unsigned int sites,
   double * orig_right_clv = right_clv;
 
   /* iterate over sites and compute CLV entries */
-  #pragma omp parallel for private(parent_clv, right_clv)
+  //#pragma omp parallel for private(parent_clv, right_clv)
   for (unsigned int n = 0; n < sites; ++n)
   {
     const double * rmat = right_matrix;
@@ -671,7 +671,7 @@ PLL_EXPORT void pll_core_update_partial_ii_20x20_avx2(unsigned int sites,
   double* orig_left_clv = left_clv;
 
   /* compute CLV */
-  #pragma omp parallel for private(parent_clv, left_clv, right_clv)
+  //#pragma omp parallel for private(parent_clv, left_clv, right_clv)
   for (unsigned int n = 0; n < sites; ++n)
   {
     const double * lmat = left_matrix;
@@ -897,7 +897,7 @@ PLL_EXPORT void pll_core_update_partial_ii_avx2(unsigned int states,
   double* orig_left_clv = left_clv;
 
   /* compute CLV */
-  #pragma omp parallel for private(parent_clv, left_clv, right_clv)
+  //#pragma omp parallel for private(parent_clv, left_clv, right_clv)
   for (unsigned int n = 0; n < sites; ++n)
   {
     const double * lmat = left_matrix;

@@ -65,7 +65,7 @@ PLL_EXPORT void pll_core_update_partial_tt_4x4(unsigned int sites,
   if (parent_scaler)
     memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
 
-#pragma omp parallel for private(parent_clv, offset)
+//#pragma omp parallel for private(parent_clv, offset)
   for (unsigned int n = 0; n < sites; ++n)
   {
     parent_clv = orig_parent_clv + (n * span);
@@ -188,7 +188,7 @@ PLL_EXPORT void pll_core_update_partial_tt(unsigned int states,
 
   if (parent_scaler)
     memset(parent_scaler, 0, sizeof(unsigned int) * scaler_size);
-#pragma omp parallel for private(parent_clv, offset)
+//#pragma omp parallel for private(parent_clv, offset)
   for (unsigned int n = 0; n < sites; ++n)
   {
     parent_clv = orig_parent_clv + (n * span);
@@ -295,7 +295,7 @@ PLL_EXPORT void pll_core_update_partial_ti_4x4(unsigned int sites,
   double * const orig_parent_clv = parent_clv;
   double const* const orig_right_clv = right_clv;
 
-#pragma omp parallel for private(lmat, rmat, parent_clv, right_clv, site_scale)
+//#pragma omp parallel for private(lmat, rmat, parent_clv, right_clv, site_scale)
   for (unsigned int  n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
@@ -475,7 +475,7 @@ PLL_EXPORT void pll_core_update_partial_ti(unsigned int states,
 
   if (parent_scaler)
     fill_parent_scaler(scaler_size, parent_scaler, NULL, right_scaler);
-#pragma omp parallel for private(lmat, rmat, parent_clv, right_clv, scaling)
+//#pragma omp parallel for private(lmat, rmat, parent_clv, right_clv, scaling)
   for (unsigned int n = 0; n < sites; ++n)
   {
     lmat = left_matrix;
@@ -726,7 +726,7 @@ PLL_EXPORT void pll_core_update_partial_ii(unsigned int states,
   double* orig_left_clv = left_clv;
 
   /* compute CLV */
-#pragma omp parallel for private(lmat, rmat, site_scale, parent_clv, left_clv, right_clv)
+//#pragma omp parallel for private(lmat, rmat, site_scale, parent_clv, left_clv, right_clv)
   for (unsigned int n = 0; n < sites; ++n)
   {
     lmat = left_matrix;

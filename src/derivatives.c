@@ -329,6 +329,7 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
  * branch_length: [input] value where the derivative is computed
  * sumtable: [input] must be computed at the edge where the derivatives will
  *                   be computed
+ * f: [output] zeroth derivative
  * d_f:  [output] first derivative
  * dd_f: [output] second derivative
  */
