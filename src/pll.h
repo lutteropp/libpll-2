@@ -822,6 +822,11 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       const unsigned int * params_indices,
                                       double *sumtable);
 
+PLL_EXPORT void pll_compute_eigenvals_and_prop_invar(pll_partition_t * partition, 
+                                                     const unsigned int * params_indices,
+                                                    double ** eigenvals,
+                                                    double * prop_invar);
+
 PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition,
                                                   int parent_scaler_index,
                                                   unsigned int * parent_scaler,
