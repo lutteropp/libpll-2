@@ -822,7 +822,7 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
                                       const unsigned int * params_indices,
                                       double *sumtable);
 
-PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition,
                                                   int parent_scaler_index,
                                                   unsigned int * parent_scaler,
                                                   int child_scaler_index,
@@ -832,7 +832,8 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   const double * sumtable,
                                                   double * f,
                                                   double * d_f,
-                                                  double * dd_f);
+                                                  double * dd_f,
+                                                  double * diagptable);
 
 /* functions in gamma.c */
 

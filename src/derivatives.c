@@ -333,7 +333,7 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
  * d_f:  [output] first derivative
  * dd_f: [output] second derivative
  */
-PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
+PLL_EXPORT int pll_compute_loglikelihood_derivatives(pll_partition_t * partition,
                                                   int parent_scaler_index,
                                                   unsigned int * parent_scaler,
                                                   int child_scaler_index,
@@ -343,7 +343,8 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                   const double * sumtable,
                                                   double * f,
                                                   double * d_f,
-                                                  double * dd_f)
+                                                  double * dd_f,
+                                                  double * diagptable)
 {
   unsigned int i;
   unsigned int rate_cats = partition->rate_cats;
@@ -382,7 +383,7 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
       : 0;
     child_ids = child_ids ? child_ids : partition->sites;
   }
-  int retval = pll_core_likelihood_derivatives(partition->states,
+  int retval = pll_core_loglikelihood_derivatives(partition->states,
                                                partition->sites,
                                                partition->rate_cats,
                                                partition->rate_weights,
@@ -401,7 +402,8 @@ PLL_EXPORT int pll_compute_likelihood_derivatives(pll_partition_t * partition,
                                                f,
                                                d_f,
                                                dd_f,
-                                               partition->attributes);
+                                               partition->attributes,
+                                               diagptable);
 
   free (freqs);
   free (prop_invar);
