@@ -693,7 +693,41 @@ static void core_site_likelihood_derivatives(unsigned int states,
   }
 }
 
-PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
+PLL_EXPORT double * pll_compute_diagptable(unsigned int states, unsigned int rate_cats, double branch_length, const double * prop_invar, const double * rates, double * const * eigenvals)
+{
+  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
+  double * diagptable = (double *) pll_aligned_alloc(
+                                      rate_cats * states * 4 * sizeof(double),
+                                      PLL_ALIGNMENT_AVX);
+  if (!diagptable)
+  {
+    pll_errno = PLL_ERROR_MEM_ALLOC;
+    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
+    return PLL_FAILURE;
+  }
+
+  const double * t_eigenvals;
+  double ki;
+  double t_branch_length;
+  double * diagp = diagptable;
+  for (unsigned int i = 0; i < rate_cats; ++i)
+  {
+    t_eigenvals = eigenvals[i];
+    ki = rates[i]/(1.0 - prop_invar[i]);
+    t_branch_length = branch_length;
+    for (unsigned int j = 0; j < states; ++j)
+    {
+      diagp[0] = exp(t_eigenvals[j] * ki * t_branch_length);
+      diagp[1] = t_eigenvals[j] * ki * diagp[0];
+      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
+      diagp[3] = 0;
+      diagp += 4;
+    }
+  }
+  return diagp;
+}
+
+PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * rate_weights,
@@ -712,7 +746,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                double * f,
                                                double * d_f,
                                                double * dd_f,
-                                               unsigned int attrib)
+                                               unsigned int attrib,
+                                               double * diagptable)
 {
   unsigned int n, i, j;
   unsigned int ef_sites;
@@ -725,7 +760,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   double t_branch_length;
   unsigned int scale_factors;
 
-  double *diagptable, *diagp;
   const int * invariant_ptr;
   double ki;
 
@@ -748,33 +782,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
   }
   *d_f = 0.0;
   *dd_f = 0.0;
-
-  diagptable = (double *) pll_aligned_alloc(
-                                      rate_cats * states * 4 * sizeof(double),
-                                      PLL_ALIGNMENT_AVX);
-  if (!diagptable)
-  {
-    pll_errno = PLL_ERROR_MEM_ALLOC;
-    snprintf (pll_errmsg, 200, "Cannot allocate memory for diagptable");
-    return PLL_FAILURE;
-  }
-
-  /* pre-compute the derivatives of the P matrix for all discrete GAMMA rates */
-  diagp = diagptable;
-  for(i = 0; i < rate_cats; ++i)
-  {
-    t_eigenvals = eigenvals[i];
-    ki = rates[i]/(1.0 - prop_invar[i]);
-    t_branch_length = branch_length;
-    for(j = 0; j < states; ++j)
-    {
-      diagp[0] = exp(t_eigenvals[j] * ki * t_branch_length);
-      diagp[1] = t_eigenvals[j] * ki * diagp[0];
-      diagp[2] = t_eigenvals[j] * ki * t_eigenvals[j] * ki * diagp[0];
-      diagp[3] = 0;
-      diagp += 4;
-    }
-  }
 
 // SSE3 vectorization in missing as of now
 #ifdef HAVE_SSE3
@@ -949,8 +956,6 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
       }
     }
   }
-
-  pll_aligned_free (diagptable);
 
   return PLL_SUCCESS;
 }

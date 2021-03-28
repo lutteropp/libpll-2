@@ -1238,7 +1238,14 @@ PLL_EXPORT int pll_core_update_sumtable_ti(unsigned int states,
                                            double * sumtable,
                                            unsigned int attrib);
 
-PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
+PLL_EXPORT double * pll_compute_diagptable(unsigned int states,
+                                          unsigned int rate_cats,
+                                          double branch_length,
+                                          const double * prop_invar,
+                                          const double * rates,
+                                          double * const * eigenvals);
+
+PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
                                                unsigned int sites,
                                                unsigned int rate_cats,
                                                const double * rate_weights,
@@ -1257,7 +1264,8 @@ PLL_EXPORT int pll_core_likelihood_derivatives(unsigned int states,
                                                double * f,
                                                double * d_f,
                                                double * dd_f,
-                                               unsigned int attrib);
+                                               unsigned int attrib,
+                                               double * diagptable);
 
 PLL_EXPORT int pll_core_update_sumtable_repeats_avx(unsigned int states,
                                                     unsigned int sites,
