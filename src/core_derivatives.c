@@ -724,7 +724,7 @@ PLL_EXPORT double * pll_compute_diagptable(unsigned int states, unsigned int rat
       diagp += 4;
     }
   }
-  return diagp;
+  return diagptable;
 }
 
 PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
