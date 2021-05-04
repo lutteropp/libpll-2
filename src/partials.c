@@ -69,7 +69,6 @@ static void case_tipinner(pll_partition_t * partition,
                           unsigned int* right_scaler)
 {
   unsigned int tip_clv_index;
-  unsigned int inner_clv_index;
   unsigned int tip_matrix_index;
   unsigned int inner_matrix_index;
   unsigned int * inner_scaler;

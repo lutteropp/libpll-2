@@ -748,18 +748,16 @@ PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
                                                unsigned int attrib,
                                                double * diagptable)
 {
-  unsigned int n, i, j;
+  unsigned int n;
   unsigned int ef_sites;
 
   const double * sum;
   double deriv1, deriv2;
   double site_lk[3];
 
-  double t_branch_length;
   unsigned int scale_factors;
 
   const int * invariant_ptr;
-  double ki;
 
   unsigned int states_padded = states;
 
@@ -854,10 +852,6 @@ PLL_EXPORT int pll_core_loglikelihood_derivatives(unsigned int states,
 
       if (f) {
         *f += pattern_weights[n] * log(site_lk[0]);
-        if (scale_factors)
-        {
-          *f += scale_factors * log(PLL_SCALE_THRESHOLD);
-        }
       }
 
       /* build derivatives */

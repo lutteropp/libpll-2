@@ -325,7 +325,7 @@ PLL_EXPORT int pll_update_sumtable(pll_partition_t * partition,
   return retval;
 }
 
-PLL_EXPORT void pll_compute_eigenvals_and_prop_invar(pll_partition_t * partition, const unsigned int * params_indices, double *** eigenvals_ptr, double ** prop_invar_ptr)
+PLL_EXPORT int pll_compute_eigenvals_and_prop_invar(pll_partition_t * partition, const unsigned int * params_indices, double *** eigenvals_ptr, double ** prop_invar_ptr)
 {
   unsigned int rate_cats = partition->rate_cats;
   double ** eigenvals = (double **) malloc(rate_cats * sizeof(double *));
@@ -346,6 +346,8 @@ PLL_EXPORT void pll_compute_eigenvals_and_prop_invar(pll_partition_t * partition
   }
   *eigenvals_ptr = eigenvals;
   *prop_invar_ptr = prop_invar;
+  
+  return PLL_SUCCESS;
 }
 
 /* Computes partial derivatives on the branch lengths.
